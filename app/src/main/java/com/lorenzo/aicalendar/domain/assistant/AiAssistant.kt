@@ -13,12 +13,26 @@ data class AssistantContext(
     val zone: ZoneId,
     val profile: UserProfile,
     val upcomingEvents: List<CalendarEvent>,
-)
+) {
+    companion object {
+        /** How many agenda events are shown to / referenceable by the model (keeps prompts small). */
+        const val MAX_AGENDA = 25
+    }
+}
 
-/** One assistant turn: the natural-language reply plus an optional event to create. */
+/** What the assistant wants to do with an event this turn. */
+enum class AssistantAction { CREATE, UPDATE, DELETE }
+
+/**
+ * One assistant turn: the natural-language reply plus an optional event operation.
+ * [action] says whether to create, update, or delete; [targetRef] is the 1-based index into
+ * the agenda shown in context (for update/delete); [eventToCreate] carries the (new) values.
+ */
 data class AssistantReply(
     val text: String,
     val eventToCreate: EventDraft? = null,
+    val action: AssistantAction = AssistantAction.CREATE,
+    val targetRef: Int? = null,
 )
 
 /**

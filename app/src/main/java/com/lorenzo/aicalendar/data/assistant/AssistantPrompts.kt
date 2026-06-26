@@ -23,10 +23,12 @@ object AssistantPrompts {
     fun eventAssistant(ctx: AssistantContext): String {
         val now = ctx.now.atZone(ctx.zone).format(dayFmt)
         val name = ctx.profile.firstName.takeIf { it.isNotBlank() }
-        val agenda = ctx.upcomingEvents.take(25).joinToString("\n") { e ->
-            "- ${e.start.atZone(ctx.zone).format(eventFmt)} ${e.title}" +
-                (e.location?.takeIf { it.isNotBlank() }?.let { " (@$it)" } ?: "")
-        }.ifBlank { "(nessun evento)" }
+        val agenda = ctx.upcomingEvents.take(AssistantContext.MAX_AGENDA)
+            .mapIndexed { i, e ->
+                "#${i + 1} ${e.start.atZone(ctx.zone).format(eventFmt)} ${e.title}" +
+                    (e.location?.takeIf { it.isNotBlank() }?.let { " (@$it)" } ?: "")
+            }
+            .joinToString("\n").ifBlank { "(nessun evento)" }
         val routine = ctx.profile.routine.takeIf { it.isNotBlank() } ?: "(non indicata)"
         val profession = ctx.profile.profession.takeIf { it != Profession.UNSPECIFIED }
             ?.name?.lowercase() ?: "non indicata"
@@ -37,14 +39,20 @@ Sei l'assistente di un'app calendario${name?.let { " di $it" } ?: ""}. Parli sem
 REGOLA DI OUTPUT (la piu importante)
 Rispondi ESCLUSIVAMENTE con UN SOLO oggetto JSON valido, senza testo prima o dopo, senza commenti, senza blocchi di codice. Usa SEMPRE virgolette doppie. Schema:
 {"reply":"...","event": OGGETTO_EVENTO oppure null}
-OGGETTO_EVENTO: {"title":"stringa","startDateTime":"ISO-8601 es 2026-06-27T15:00:00","endDateTime":"ISO-8601","location":"stringa o null","allDay":true/false,"recurrence":{"rrule":"RFC-5545","label":"descrizione breve italiana"} oppure null}
+OGGETTO_EVENTO: {"action":"create"/"update"/"delete","ref": numero oppure null,"title":"stringa","startDateTime":"ISO-8601 es 2026-06-27T15:00:00","endDateTime":"ISO-8601","location":"stringa o null","allDay":true/false,"recurrence":{"rrule":"RFC-5545","label":"descrizione breve italiana"} oppure null}
 - "reply": una frase calorosa e breve che conferma o chiede chiarimenti.
-- "event": null quando non si crea un evento (saluti, domande) o se mancano dati essenziali (in tal caso chiedi nel "reply").
+- "event": null quando non c'e nessuna operazione (saluti, domande) o se mancano dati essenziali (in tal caso chiedi nel "reply").
+
+OPERAZIONI SU EVENTI (campo "action")
+- "create": nuovo evento. "ref": null. Compila tutti i campi.
+- "update": modificare o SPOSTARE un evento ESISTENTE (cambio orario/giorno/titolo/luogo). "ref" = il numero #N dell'evento preso dalla lista "Impegni gia in agenda". Ricompila TUTTI i campi con i valori NUOVI (ripeti quelli invariati).
+- "delete": cancellare/annullare un evento esistente. "ref" = il numero #N dell'evento. Gli altri campi possono essere null.
+Usa "ref" SOLO con un numero #N realmente presente in agenda. Se l'utente fa riferimento a un evento non in lista, chiedi chiarimenti e lascia "event": null.
 
 CONTESTO
 - Adesso: $now (fuso ${ctx.zone.id})
 - Professione utente: $profession
-- Impegni gia in agenda: $agenda
+- Impegni gia in agenda (riferiti con #N): $agenda
 - Routine settimanale dell'utente: $routine
 
 DATE RELATIVE

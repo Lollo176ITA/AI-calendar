@@ -2,6 +2,7 @@ package com.lorenzo.aicalendar.data.assistant
 
 import com.lorenzo.aicalendar.data.remote.openrouter.OpenRouterApi
 import com.lorenzo.aicalendar.domain.assistant.AiAssistant
+import com.lorenzo.aicalendar.domain.assistant.AssistantAction
 import com.lorenzo.aicalendar.domain.assistant.AssistantContext
 import com.lorenzo.aicalendar.domain.assistant.AssistantReply
 import com.lorenzo.aicalendar.domain.chat.ChatMessage
@@ -15,6 +16,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.lorenzo.aicalendar.data.remote.openrouter.ChatMessage as ApiMessage
@@ -72,6 +74,13 @@ class OpenRouterAssistant @Inject constructor(
         val reply = obj.str("reply", "text", "message") ?: "Ok."
         val eventObj = obj["event"]?.takeIf { it !is JsonNull } as? JsonObject
 
+        val action = when (eventObj?.str("action")?.lowercase()) {
+            "update", "modify", "move", "sposta", "modifica" -> AssistantAction.UPDATE
+            "delete", "remove", "cancel", "elimina", "cancella" -> AssistantAction.DELETE
+            else -> AssistantAction.CREATE
+        }
+        val ref = eventObj?.get("ref")?.takeIf { it !is JsonNull }?.jsonPrimitive?.intOrNull
+
         val draft = eventObj?.let { e ->
             val start = e.str("startDateTime", "datetime", "start")?.let { parseInstant(it, zone) }
             if (start == null) {
@@ -90,7 +99,7 @@ class OpenRouterAssistant @Inject constructor(
                 )
             }
         }
-        return AssistantReply(reply, draft)
+        return AssistantReply(reply, draft, action, ref)
     }
 
     private fun parseRecurrence(element: JsonElement?): Recurrence? {
