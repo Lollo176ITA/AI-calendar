@@ -16,6 +16,13 @@ interface EventRepository {
     /** Events starting on [date] (in [zone]), ordered by start time, as a live stream. */
     fun observeEventsForDay(date: LocalDate, zone: ZoneId): Flow<List<CalendarEvent>>
 
+    /** Events starting in `[startDate, endDateExclusive)` (in [zone]), ordered by start. */
+    fun observeEventsInRange(
+        startDate: LocalDate,
+        endDateExclusive: LocalDate,
+        zone: ZoneId,
+    ): Flow<List<CalendarEvent>>
+
     /** Events starting at or after [from], ordered by start — used to re-arm reminders. */
     suspend fun getUpcomingEvents(from: Instant): List<CalendarEvent>
 

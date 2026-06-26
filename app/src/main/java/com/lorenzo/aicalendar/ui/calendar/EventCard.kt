@@ -1,4 +1,4 @@
-package com.lorenzo.aicalendar.ui.today
+package com.lorenzo.aicalendar.ui.calendar
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

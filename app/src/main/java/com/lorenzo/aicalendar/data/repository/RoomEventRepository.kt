@@ -22,6 +22,16 @@ class RoomEventRepository @Inject constructor(
         return dao.observeBetween(start, end).map { rows -> rows.map { it.toDomain() } }
     }
 
+    override fun observeEventsInRange(
+        startDate: LocalDate,
+        endDateExclusive: LocalDate,
+        zone: ZoneId,
+    ): Flow<List<CalendarEvent>> {
+        val start = startDate.atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = endDateExclusive.atStartOfDay(zone).toInstant().toEpochMilli()
+        return dao.observeBetween(start, end).map { rows -> rows.map { it.toDomain() } }
+    }
+
     override suspend fun getUpcomingEvents(from: Instant): List<CalendarEvent> =
         dao.getStartingAtOrAfter(from.toEpochMilli()).map { it.toDomain() }
 

@@ -80,6 +80,9 @@ dependencies {
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
+    // Calendar month/week grid
+    implementation(libs.kizitonwose.calendar.compose)
+
     // On-device AI: ML Kit Entity Extraction (date/time, offline, Italian)
     implementation(libs.mlkit.entity.extraction)
 
