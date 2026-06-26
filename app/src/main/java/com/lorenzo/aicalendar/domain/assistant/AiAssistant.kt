@@ -13,6 +13,8 @@ data class AssistantContext(
     val zone: ZoneId,
     val profile: UserProfile,
     val upcomingEvents: List<CalendarEvent>,
+    /** Read-only events mirrored from the device calendar, for conflict awareness (never edited). */
+    val systemEvents: List<CalendarEvent> = emptyList(),
 ) {
     companion object {
         /** How many agenda events are shown to / referenceable by the model (keeps prompts small). */

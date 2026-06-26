@@ -2,6 +2,8 @@ package com.lorenzo.aicalendar.ui.assistant
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lorenzo.aicalendar.data.calendar.SystemCalendarReader
+import com.lorenzo.aicalendar.data.settings.SettingsRepository
 import com.lorenzo.aicalendar.domain.assistant.AiAssistant
 import com.lorenzo.aicalendar.domain.assistant.AssistantAction
 import com.lorenzo.aicalendar.domain.assistant.AssistantContext
@@ -26,6 +28,8 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.Inject
 
@@ -37,6 +41,8 @@ class AssistantViewModel @Inject constructor(
     private val saveEvent: SaveEventUseCase,
     private val deleteEvent: DeleteEventUseCase,
     private val profileRepository: ProfileRepository,
+    private val settings: SettingsRepository,
+    private val systemReader: SystemCalendarReader,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -59,18 +65,29 @@ class AssistantViewModel @Inject constructor(
                 val zone = clock.zone
                 val profile = profileRepository.profile.first()
                 val upcoming = eventRepository.getUpcomingEvents(now, zone)
+                val systemEvents = if (settings.showSystemCalendar.first()) {
+                    systemReader.eventsBetween(now, now.plus(60, ChronoUnit.DAYS), zone)
+                } else {
+                    emptyList()
+                }
                 val history = chatRepository.observeMessages().first().dropLast(1)
 
                 val reply = assistant.respond(
                     history = history,
                     userMessage = message,
-                    context = AssistantContext(now, zone, profile, upcoming),
+                    context = AssistantContext(now, zone, profile, upcoming, systemEvents),
                 )
 
-                applyAction(reply, upcoming, zone)
+                val saved = applyAction(reply, upcoming, zone)
+                val conflictNote = saved?.let { conflictWarning(it, upcoming + systemEvents, zone) }
 
                 chatRepository.add(
-                    ChatMessage(UUID.randomUUID().toString(), ChatRole.ASSISTANT, reply.text, Instant.now(clock)),
+                    ChatMessage(
+                        UUID.randomUUID().toString(),
+                        ChatRole.ASSISTANT,
+                        reply.text + conflictNote.orEmpty(),
+                        Instant.now(clock),
+                    ),
                 )
             } catch (e: Exception) {
                 chatRepository.add(
@@ -87,53 +104,87 @@ class AssistantViewModel @Inject constructor(
         }
     }
 
-    /** Applies the assistant's intent: create a new event, or update/delete one it referenced. */
-    private suspend fun applyAction(reply: AssistantReply, upcoming: List<CalendarEvent>, zone: ZoneId) {
+    /**
+     * Applies the assistant's intent: create a new event, or update/delete one it referenced.
+     * Returns the created/updated event (for conflict checking), or null for delete/no-op.
+     */
+    private suspend fun applyAction(
+        reply: AssistantReply,
+        upcoming: List<CalendarEvent>,
+        zone: ZoneId,
+    ): CalendarEvent? {
         val draft = reply.eventToCreate
         val target = reply.targetRef
             ?.let { upcoming.take(AssistantContext.MAX_AGENDA).getOrNull(it - 1) }
         val ts = Instant.now(clock)
 
-        when (reply.action) {
-            AssistantAction.DELETE -> target?.let { deleteEvent(it.id) }
+        return when (reply.action) {
+            AssistantAction.DELETE -> {
+                target?.let { deleteEvent(it.id) }
+                null
+            }
 
             AssistantAction.UPDATE -> {
-                if (target != null && draft?.start != null) {
-                    val existing = eventRepository.getEvent(target.id) ?: target
-                    saveEvent(
-                        existing.copy(
-                            title = draft.title,
-                            start = draft.start,
-                            end = draft.end,
-                            allDay = draft.allDay,
-                            location = draft.location,
-                            recurrence = draft.recurrence ?: existing.recurrence,
-                            updatedAt = ts,
-                        ),
-                    )
-                }
+                if (target == null || draft?.start == null) return null
+                val existing = eventRepository.getEvent(target.id) ?: target
+                existing.copy(
+                    title = draft.title,
+                    start = draft.start,
+                    end = draft.end,
+                    allDay = draft.allDay,
+                    location = draft.location,
+                    recurrence = draft.recurrence ?: existing.recurrence,
+                    updatedAt = ts,
+                ).also { saveEvent(it) }
             }
 
             AssistantAction.CREATE -> {
-                if (draft?.start != null) {
-                    saveEvent(
-                        CalendarEvent(
-                            id = UUID.randomUUID().toString(),
-                            title = draft.title,
-                            start = draft.start,
-                            zone = zone,
-                            end = draft.end,
-                            allDay = draft.allDay,
-                            location = draft.location,
-                            reminderOffsetMin = draft.reminderOffsetMin,
-                            recurrence = draft.recurrence,
-                            source = EventSource.AI_TEXT,
-                            createdAt = ts,
-                            updatedAt = ts,
-                        ),
-                    )
-                }
+                if (draft?.start == null) return null
+                CalendarEvent(
+                    id = UUID.randomUUID().toString(),
+                    title = draft.title,
+                    start = draft.start,
+                    zone = zone,
+                    end = draft.end,
+                    allDay = draft.allDay,
+                    location = draft.location,
+                    reminderOffsetMin = draft.reminderOffsetMin,
+                    recurrence = draft.recurrence,
+                    source = EventSource.AI_TEXT,
+                    createdAt = ts,
+                    updatedAt = ts,
+                ).also { saveEvent(it) }
             }
         }
+    }
+
+    /**
+     * Deterministic conflict check: flags timed [others] overlapping [event] (same instant range),
+     * so overlaps are caught reliably regardless of what the LLM noticed. Returns a note to append.
+     */
+    private fun conflictWarning(
+        event: CalendarEvent,
+        others: List<CalendarEvent>,
+        zone: ZoneId,
+    ): String? {
+        if (event.allDay) return null
+        val start = event.start
+        val end = event.effectiveEnd
+        val masterId = event.id.substringBefore("@")
+        val clashes = others.asSequence()
+            .filter { it.id.substringBefore("@") != masterId && !it.allDay }
+            .filter { it.start.isBefore(end) && it.effectiveEnd.isAfter(start) }
+            .distinctBy { it.id.substringBefore("@") }
+            .toList()
+        if (clashes.isEmpty()) return null
+
+        val list = clashes.joinToString("; ") { c ->
+            "«${c.title}» ${timeFmt.format(c.start.atZone(zone))}–${timeFmt.format(c.effectiveEnd.atZone(zone))}"
+        }
+        return "\n\n⚠️ Attenzione: si sovrappone con $list."
+    }
+
+    private companion object {
+        val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
     }
 }

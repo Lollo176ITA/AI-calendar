@@ -34,9 +34,9 @@ object NetworkModule {
     fun provideHttpClient(json: Json): HttpClient = HttpClient(OkHttp) {
         install(ContentNegotiation) { json(json) }
         install(HttpTimeout) {
-            requestTimeoutMillis = 45_000
+            requestTimeoutMillis = 35_000
             connectTimeoutMillis = 15_000
-            socketTimeoutMillis = 45_000
+            socketTimeoutMillis = 35_000
         }
         install(Logging) { level = LogLevel.NONE }
     }

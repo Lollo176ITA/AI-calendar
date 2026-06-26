@@ -10,4 +10,7 @@ enum class EventSource {
 
     /** Extracted from voice input (speech-to-text → extractor). */
     AI_VOICE,
+
+    /** Read-only, mirrored from the device's system calendar (Google/Samsung) via CalendarContract. */
+    SYSTEM,
 }

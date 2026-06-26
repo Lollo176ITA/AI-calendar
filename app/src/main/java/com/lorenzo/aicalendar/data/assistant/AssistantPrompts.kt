@@ -29,6 +29,11 @@ object AssistantPrompts {
                     (e.location?.takeIf { it.isNotBlank() }?.let { " (@$it)" } ?: "")
             }
             .joinToString("\n").ifBlank { "(nessun evento)" }
+        val systemAgenda = ctx.systemEvents.take(AssistantContext.MAX_AGENDA)
+            .joinToString("\n") { e ->
+                "- ${e.start.atZone(ctx.zone).format(eventFmt)} ${e.title}" +
+                    (e.location?.takeIf { it.isNotBlank() }?.let { " (@$it)" } ?: "")
+            }
         val routine = ctx.profile.routine.takeIf { it.isNotBlank() } ?: "(non indicata)"
         val profession = ctx.profile.profession.takeIf { it != Profession.UNSPECIFIED }
             ?.name?.lowercase() ?: "non indicata"
@@ -53,7 +58,7 @@ CONTESTO
 - Adesso: $now (fuso ${ctx.zone.id})
 - Professione utente: $profession
 - Impegni gia in agenda (riferiti con #N): $agenda
-- Routine settimanale dell'utente: $routine
+- Routine settimanale dell'utente: $routine${systemAgenda.takeIf { it.isNotBlank() }?.let { "\n- Impegni dal calendario del telefono (SOLA LETTURA, considerali per i conflitti ma NON modificarli/cancellarli):\n$it" } ?: ""}
 
 DATE RELATIVE
 Risolvi "oggi/domani/dopodomani/lunedi prossimo/tra due settimane/stasera/questo weekend" rispetto ad adesso. Se manca l'orario, chiedilo e lascia "event": null. "Tutto il giorno" -> "allDay": true e T00:00:00. Se manca la durata, "endDateTime" = un'ora dopo "startDateTime".

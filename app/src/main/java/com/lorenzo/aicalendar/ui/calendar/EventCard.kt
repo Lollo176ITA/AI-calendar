@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
+import com.lorenzo.aicalendar.domain.model.EventSource
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -28,7 +30,15 @@ private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ITALIAN)
 /** One agenda event: start/end times on the left, title + optional location on the right. */
 @Composable
 fun EventCard(event: CalendarEvent, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
-    Card(modifier = modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }) {
+    val fromSystem = event.source == EventSource.SYSTEM
+    Card(
+        modifier = modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it },
+        colors = if (fromSystem) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        } else {
+            CardDefaults.cardColors()
+        },
+    ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -47,6 +57,13 @@ fun EventCard(event: CalendarEvent, modifier: Modifier = Modifier, onClick: (() 
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(text = event.title, style = MaterialTheme.typography.titleMedium)
+                if (fromSystem) {
+                    Text(
+                        text = "dal telefono" + (event.notes?.let { " · $it" } ?: ""),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
                 if (!event.location.isNullOrBlank()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(

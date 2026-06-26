@@ -163,7 +163,8 @@ class OpenRouterApi @Inject constructor(
         const val APP_TITLE = "AI-calendar"
         val CODE_FENCE = Regex("```(?:json)?")
 
-        /** Backoff before each retry (ms); size also sets the number of extra attempts. */
-        val BACKOFF_MS = longArrayOf(700, 1800)
+        /** Backoff before each retry (ms); size also sets the number of extra attempts.
+         *  One retry keeps worst-case latency bounded while still absorbing a transient blip. */
+        val BACKOFF_MS = longArrayOf(1000)
     }
 }

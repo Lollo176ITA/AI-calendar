@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
+import com.lorenzo.aicalendar.domain.model.EventSource
 import com.lorenzo.aicalendar.ui.AppDestinations
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
@@ -97,8 +98,11 @@ fun CalendarScreen(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val onEventClick: (CalendarEvent) -> Unit = {
-        onNavigate(AppDestinations.event(it.id.substringBefore("@")))
+    val onEventClick: (CalendarEvent) -> Unit = { event ->
+        // System-calendar events are read-only mirrors — don't open the editable detail screen.
+        if (event.source != EventSource.SYSTEM) {
+            onNavigate(AppDestinations.event(event.id.substringBefore("@")))
+        }
     }
 
     ModalNavigationDrawer(
