@@ -7,6 +7,7 @@ import com.lorenzo.aicalendar.domain.model.CalendarEvent
 import com.lorenzo.aicalendar.domain.repository.EventRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -20,6 +21,9 @@ class RoomEventRepository @Inject constructor(
         val (start, end) = dayBoundsUtcMillis(date, zone)
         return dao.observeBetween(start, end).map { rows -> rows.map { it.toDomain() } }
     }
+
+    override suspend fun getUpcomingEvents(from: Instant): List<CalendarEvent> =
+        dao.getStartingAtOrAfter(from.toEpochMilli()).map { it.toDomain() }
 
     override suspend fun getEvent(id: String): CalendarEvent? = dao.getById(id)?.toDomain()
 

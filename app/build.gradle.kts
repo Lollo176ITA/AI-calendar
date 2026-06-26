@@ -59,6 +59,7 @@ dependencies {
     // Dependency injection (Hilt) — processor via KSP (kapt is incompatible with AGP 9 built-in Kotlin)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
+    compileOnly(libs.errorprone.annotations)
 
     // Coroutines / Flow
     implementation(libs.kotlinx.coroutines.android)

@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Show reminder notifications (Android 13+ runtime permission). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Exact reminder alarms. USE_EXACT_ALARM is auto-granted at install for genuine
+         calendar/alarm apps (Play-policy gated). Required by setAlarmClock on Android 16. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Re-arm reminders after device reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".AiCalendarApp"
         android:allowBackup="true"
@@ -20,6 +28,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Fired by AlarmManager at reminder time (explicit PendingIntent → not exported). -->
+        <receiver
+            android:name=".data.reminder.ReminderReceiver"
+            android:exported="false" />
+
+        <!-- Re-arms reminders after reboot (protected BOOT_COMPLETED broadcast). -->
+        <receiver
+            android:name=".data.reminder.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

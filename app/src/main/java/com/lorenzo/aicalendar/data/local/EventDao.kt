@@ -15,6 +15,10 @@ interface EventDao {
     )
     fun observeBetween(startMillis: Long, endMillis: Long): Flow<List<EventEntity>>
 
+    /** All events starting at or after [fromMillis] (used to re-arm reminders after reboot). */
+    @Query("SELECT * FROM events WHERE startEpochMillis >= :fromMillis ORDER BY startEpochMillis ASC")
+    suspend fun getStartingAtOrAfter(fromMillis: Long): List<EventEntity>
+
     @Query("SELECT * FROM events WHERE id = :id")
     suspend fun getById(id: String): EventEntity?
 

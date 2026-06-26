@@ -2,6 +2,7 @@ package com.lorenzo.aicalendar.domain.repository
 
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -14,6 +15,9 @@ interface EventRepository {
 
     /** Events starting on [date] (in [zone]), ordered by start time, as a live stream. */
     fun observeEventsForDay(date: LocalDate, zone: ZoneId): Flow<List<CalendarEvent>>
+
+    /** Events starting at or after [from], ordered by start — used to re-arm reminders. */
+    suspend fun getUpcomingEvents(from: Instant): List<CalendarEvent>
 
     suspend fun getEvent(id: String): CalendarEvent?
 

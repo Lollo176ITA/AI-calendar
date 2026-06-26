@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
 import com.lorenzo.aicalendar.domain.model.EventSource
 import com.lorenzo.aicalendar.domain.repository.EventRepository
+import com.lorenzo.aicalendar.domain.usecase.SaveEventUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class TodayViewModel @Inject constructor(
     private val repository: EventRepository,
+    private val saveEvent: SaveEventUseCase,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -38,20 +40,22 @@ class TodayViewModel @Inject constructor(
             )
 
     /**
-     * Temporary: inserts a sample event ~1h from now so the reactive Room → UI path is
-     * visible. Replaced by the real AI Quick-Add in a later slice.
+     * Temporary: inserts a sample event a couple of minutes out (with a 2-minute reminder
+     * offset, so the reminder fires right away) to exercise the Room → UI path AND the
+     * reminder pipeline. Replaced by the real AI Quick-Add in a later slice.
      */
     fun addSampleEvent() {
         viewModelScope.launch {
             val now = Instant.now(clock)
-            repository.upsert(
+            saveEvent(
                 CalendarEvent(
                     id = UUID.randomUUID().toString(),
                     title = "Evento di prova",
-                    start = now.plus(Duration.ofHours(1)),
+                    start = now.plus(Duration.ofMinutes(2)),
                     zone = zone,
                     location = "Casa",
                     source = EventSource.MANUAL,
+                    reminderOffsetMin = 2,
                     createdAt = now,
                     updatedAt = now,
                 ),
