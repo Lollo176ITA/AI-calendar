@@ -2,6 +2,7 @@ package com.lorenzo.aicalendar.domain.extract
 
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
 import com.lorenzo.aicalendar.domain.model.EventSource
+import com.lorenzo.aicalendar.domain.model.Recurrence
 import java.time.Instant
 
 /**
@@ -15,5 +16,6 @@ data class EventDraft(
     val allDay: Boolean = false,
     val location: String? = null,
     val reminderOffsetMin: Int? = CalendarEvent.DEFAULT_REMINDER_OFFSET_MIN,
+    val recurrence: Recurrence? = null,
     val source: EventSource = EventSource.MANUAL,
 )

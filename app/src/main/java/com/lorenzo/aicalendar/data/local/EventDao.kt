@@ -19,6 +19,13 @@ interface EventDao {
     @Query("SELECT * FROM events WHERE startEpochMillis >= :fromMillis ORDER BY startEpochMillis ASC")
     suspend fun getStartingAtOrAfter(fromMillis: Long): List<EventEntity>
 
+    /** Recurring "master" events (expanded into occurrences in code). */
+    @Query("SELECT * FROM events WHERE recurrenceFreq IS NOT NULL")
+    fun observeRecurring(): Flow<List<EventEntity>>
+
+    @Query("SELECT * FROM events WHERE recurrenceFreq IS NOT NULL")
+    suspend fun getRecurring(): List<EventEntity>
+
     @Query("SELECT * FROM events WHERE id = :id")
     suspend fun getById(id: String): EventEntity?
 

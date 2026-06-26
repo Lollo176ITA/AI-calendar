@@ -38,7 +38,7 @@ class CalendarViewModel @Inject constructor(
      * the selected-day list. (Recurring/far-future occurrences come with the recurrence slice.)
      */
     val eventsByDay: StateFlow<Map<LocalDate, List<CalendarEvent>>> =
-        repository.observeEventsInRange(
+        repository.observeOccurrencesInRange(
             startDate = LocalDate.now(clock).minusMonths(6),
             endDateExclusive = LocalDate.now(clock).plusMonths(18),
             zone = zone,

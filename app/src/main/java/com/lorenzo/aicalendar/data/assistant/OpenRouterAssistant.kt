@@ -8,12 +8,16 @@ import com.lorenzo.aicalendar.domain.chat.ChatMessage
 import com.lorenzo.aicalendar.domain.chat.ChatRole
 import com.lorenzo.aicalendar.domain.extract.EventDraft
 import com.lorenzo.aicalendar.domain.model.EventSource
+import com.lorenzo.aicalendar.domain.model.Frequency
+import com.lorenzo.aicalendar.domain.model.Recurrence
 import com.lorenzo.aicalendar.domain.profile.Profession
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.lorenzo.aicalendar.data.remote.openrouter.ChatMessage as ApiMessage
@@ -71,8 +75,9 @@ class OpenRouterAssistant @Inject constructor(
             append("Se l'utente vuole aggiungere o spostare un evento, mettilo nel campo \"event\". ")
             append("Risolvi le date relative rispetto a oggi (ISO-8601, es 2026-06-26T15:00:00). ")
             append("Segnala eventuali sovrapposizioni con gli eventi esistenti; se l'intento è chiaro crea pure l'evento, altrimenti chiedi conferma e lascia \"event\" a null. ")
+            append("Se l'evento è ricorrente (ogni giorno/settimana/mese/anno), imposta \"recurrence\" con \"frequency\" tra daily|weekly|monthly|yearly e \"interval\" (intero, default 1); altrimenti \"recurrence\": null. ")
             append("\n\nRispondi SEMPRE e SOLO con un oggetto JSON, niente altro:\n")
-            append("{\"reply\": \"<testo per l'utente>\", \"event\": {\"title\": \"...\", \"startDateTime\": \"ISO-8601\", \"endDateTime\": \"ISO-8601 o null\", \"location\": \"string o null\", \"allDay\": false} oppure null}")
+            append("{\"reply\": \"<testo per l'utente>\", \"event\": {\"title\": \"...\", \"startDateTime\": \"ISO-8601\", \"endDateTime\": \"ISO-8601 o null\", \"location\": \"string o null\", \"allDay\": false, \"recurrence\": {\"frequency\": \"yearly\", \"interval\": 1} oppure null} oppure null}")
         }
     }
 
@@ -94,11 +99,20 @@ class OpenRouterAssistant @Inject constructor(
                     end = e.str("endDateTime", "end")?.let { parseInstant(it, zone) },
                     allDay = e["allDay"]?.jsonPrimitive?.booleanOrNull ?: false,
                     location = e.str("location"),
+                    recurrence = parseRecurrence(e["recurrence"]),
                     source = EventSource.AI_TEXT,
                 )
             }
         }
         return AssistantReply(reply, draft)
+    }
+
+    private fun parseRecurrence(element: JsonElement?): Recurrence? {
+        val obj = element?.takeIf { it !is JsonNull } as? JsonObject ?: return null
+        val freq = obj.str("frequency", "freq", "type")?.uppercase()
+            ?.let { runCatching { Frequency.valueOf(it) }.getOrNull() } ?: return null
+        val interval = (obj["interval"]?.jsonPrimitive?.intOrNull ?: 1).coerceAtLeast(1)
+        return Recurrence(freq, interval)
     }
 
     private fun JsonObject.str(vararg keys: String): String? = keys.firstNotNullOfOrNull { key ->

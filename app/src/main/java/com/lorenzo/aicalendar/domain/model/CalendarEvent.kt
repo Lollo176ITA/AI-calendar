@@ -21,6 +21,7 @@ data class CalendarEvent(
     val notes: String? = null,
     val source: EventSource = EventSource.MANUAL,
     val reminderOffsetMin: Int? = DEFAULT_REMINDER_OFFSET_MIN,
+    val recurrence: Recurrence? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {

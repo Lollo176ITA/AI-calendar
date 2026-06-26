@@ -7,8 +7,10 @@ import android.content.Intent
 import android.util.Log
 import com.lorenzo.aicalendar.MainActivity
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
+import com.lorenzo.aicalendar.domain.model.nextOccurrenceStart
 import com.lorenzo.aicalendar.domain.reminder.ReminderScheduler
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
@@ -27,10 +29,17 @@ class AlarmReminderScheduler @Inject constructor(
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ITALIAN)
 
     override fun schedule(event: CalendarEvent) {
-        val triggerAt = reminderTriggerMillis(event) ?: return
+        val offsetMin = event.reminderOffsetMin ?: return
+        // For recurring events, remind for the next upcoming occurrence.
+        val occurrenceStart = if (event.recurrence != null) {
+            event.nextOccurrenceStart(Instant.now(), event.zone) ?: return
+        } else {
+            event.start
+        }
+        val triggerAt = occurrenceStart.minus(java.time.Duration.ofMinutes(offsetMin.toLong())).toEpochMilli()
         val requestCode = event.id.hashCode()
 
-        val time = event.start.atZone(event.zone).format(timeFormatter)
+        val time = occurrenceStart.atZone(event.zone).format(timeFormatter)
         val text = buildString {
             append("Alle ").append(time)
             event.location?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }

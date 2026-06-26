@@ -53,7 +53,7 @@ class AssistantViewModel @Inject constructor(
             try {
                 val zone = clock.zone
                 val profile = profileRepository.profile.first()
-                val upcoming = eventRepository.getUpcomingEvents(now)
+                val upcoming = eventRepository.getUpcomingEvents(now, zone)
                 val history = chatRepository.observeMessages().first().dropLast(1)
 
                 val reply = assistant.respond(
@@ -75,6 +75,7 @@ class AssistantViewModel @Inject constructor(
                             allDay = draft.allDay,
                             location = draft.location,
                             reminderOffsetMin = draft.reminderOffsetMin,
+                            recurrence = draft.recurrence,
                             source = EventSource.AI_TEXT,
                             createdAt = ts,
                             updatedAt = ts,

@@ -23,8 +23,18 @@ interface EventRepository {
         zone: ZoneId,
     ): Flow<List<CalendarEvent>>
 
-    /** Events starting at or after [from], ordered by start — used to re-arm reminders. */
-    suspend fun getUpcomingEvents(from: Instant): List<CalendarEvent>
+    /** Like [observeEventsInRange] but expands recurring events into their occurrences. */
+    fun observeOccurrencesInRange(
+        startDate: LocalDate,
+        endDateExclusive: LocalDate,
+        zone: ZoneId,
+    ): Flow<List<CalendarEvent>>
+
+    /**
+     * Upcoming events for the assistant context / reminder re-arming: non-recurring events
+     * from [from], plus each recurring event's next occurrence at/after [from].
+     */
+    suspend fun getUpcomingEvents(from: Instant, zone: ZoneId): List<CalendarEvent>
 
     suspend fun getEvent(id: String): CalendarEvent?
 

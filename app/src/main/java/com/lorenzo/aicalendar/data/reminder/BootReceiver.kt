@@ -29,7 +29,7 @@ class BootReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                repository.getUpcomingEvents(Instant.now(clock)).forEach(scheduler::schedule)
+                repository.getUpcomingEvents(Instant.now(clock), clock.zone).forEach(scheduler::schedule)
             } finally {
                 pending.finish()
             }
