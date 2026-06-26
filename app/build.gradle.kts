@@ -83,6 +83,9 @@ dependencies {
     // Calendar month/week grid
     implementation(libs.kizitonwose.calendar.compose)
 
+    // Profile / settings storage
+    implementation(libs.androidx.datastore.preferences)
+
     // On-device AI: ML Kit Entity Extraction (date/time, offline, Italian)
     implementation(libs.mlkit.entity.extraction)
 

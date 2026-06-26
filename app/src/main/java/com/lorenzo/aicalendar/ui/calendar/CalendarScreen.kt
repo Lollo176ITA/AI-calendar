@@ -22,21 +22,27 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +75,7 @@ private val dayShortFmt = DateTimeFormatter.ofPattern("d MMM", IT)
 @Composable
 fun CalendarScreen(
     onAddEvent: () -> Unit,
+    onOpenSettings: () -> Unit,
     viewModel: CalendarViewModel = hiltViewModel(),
 ) {
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
@@ -77,6 +84,14 @@ fun CalendarScreen(
     val today = viewModel.today()
 
     Scaffold(
+        topBar = {
+            CalendarTopBar(
+                viewMode = viewMode,
+                onSetViewMode = viewModel::setViewMode,
+                onProfile = onOpenSettings,
+                onSettings = onOpenSettings,
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddEvent) {
                 Icon(Icons.Filled.Add, contentDescription = "Aggiungi evento")
@@ -84,7 +99,6 @@ fun CalendarScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            ModeSelector(viewMode, viewModel::setViewMode)
             when (viewMode) {
                 CalendarViewMode.DAY -> DayView(
                     date = selectedDate,
@@ -115,24 +129,42 @@ fun CalendarScreen(
 }
 
 @Composable
-private fun ModeSelector(mode: CalendarViewMode, onSelect: (CalendarViewMode) -> Unit) {
+private fun CalendarTopBar(
+    viewMode: CalendarViewMode,
+    onSetViewMode: (CalendarViewMode) -> Unit,
+    onProfile: () -> Unit,
+    onSettings: () -> Unit,
+) {
     val labels = mapOf(
         CalendarViewMode.DAY to "Giorno",
         CalendarViewMode.WEEK to "Settimana",
         CalendarViewMode.MONTH to "Mese",
     )
-    SingleChoiceSegmentedButtonRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        val modes = CalendarViewMode.entries
-        modes.forEachIndexed { index, m ->
-            SegmentedButton(
-                selected = m == mode,
-                onClick = { onSelect(m) },
-                shape = SegmentedButtonDefaults.itemShape(index, modes.size),
-            ) { Text(labels.getValue(m)) }
-        }
-    }
+    var menuOpen by remember { mutableStateOf(false) }
+
+    TopAppBar(
+        title = { Text("Calendario") },
+        navigationIcon = {
+            IconButton(onProfile) { Icon(Icons.Filled.Person, contentDescription = "Profilo") }
+        },
+        actions = {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "Cambia vista")
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                CalendarViewMode.entries.forEach { mode ->
+                    DropdownMenuItem(
+                        text = { Text(labels.getValue(mode)) },
+                        onClick = { onSetViewMode(mode); menuOpen = false },
+                        leadingIcon = {
+                            if (mode == viewMode) Icon(Icons.Filled.Check, contentDescription = null)
+                        },
+                    )
+                }
+            }
+            IconButton(onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Impostazioni") }
+        },
+    )
 }
 
 @Composable
