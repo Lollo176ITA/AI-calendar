@@ -3,13 +3,15 @@
 package com.lorenzo.aicalendar.ui.assistant
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +19,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -69,15 +73,10 @@ fun AssistantScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (messages.isEmpty() && !sending) {
-                Box(Modifier.weight(1f).fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Ciao! Dimmi cosa vuoi aggiungere (es. \"giovedì alle 15 ho il dentista\") " +
-                            "o chiedimi della tua agenda.",
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                AssistantWelcome(
+                    modifier = Modifier.weight(1f),
+                    onPick = { input = it },
+                )
             } else {
                 LazyColumn(
                     state = listState,
@@ -99,6 +98,51 @@ fun AssistantScreen(
                     input = ""
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun AssistantWelcome(modifier: Modifier = Modifier, onPick: (String) -> Unit) {
+    val examples = listOf(
+        "Pranzo con Anna domani alle 13",
+        "Ricordami la visita medica un sabato al mese",
+        "Sposta la riunione alle 15",
+        "Cosa ho in agenda questa settimana?",
+    )
+    Column(
+        modifier = modifier.fillMaxWidth().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            Icons.Filled.AutoAwesome,
+            contentDescription = null,
+            modifier = Modifier.size(44.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.height(16.dp))
+        Text("Il tuo assistente", style = MaterialTheme.typography.headlineSmall)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Crea, sposta o cancella eventi parlando in modo naturale. Gestisco anche le " +
+                "ricorrenze e ti avviso sulle sovrapposizioni.",
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(20.dp))
+        examples.forEach { example ->
+            Card(
+                onClick = { onPick(example) },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            ) {
+                Text(
+                    example,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
     }
 }
