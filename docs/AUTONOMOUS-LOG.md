@@ -6,7 +6,6 @@ conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarr
 
 ## Verificato (giu 2026, emulatore + endpoint AI)
 
-
 - **Assistente che RIARRANGIA l'agenda** (cuore della visione): la chat ora crea, **sposta/modifica** ed **elimina** eventi esistenti, non solo li crea. L'agenda è numerata (#N) nel prompt; il modello risponde con `event.action` (create/update/delete) e `ref` (#N); il VM risolve il riferimento e applica via use case. Verificato: "riunione domani alle 10" → "sposta la riunione alle 15" (UPDATE) → "cancella la riunione" (DELETE), con persistenza confermata nel calendario. ✓
 - **Dettaglio/modifica/elimina evento**: tap su un evento → schermata con titolo/data/ora/luogo modificabili (Salva) e cestino con conferma ("L'evento e le sue ripetizioni verrà rimosso"). Verificato: creazione via chat → tap → elimina → sparisce. ✓ Le occorrenze (`id@millis`) editano/eliminano l'evento "master".
 - **Robustezza AI**: `chat()` ora ritenta con backoff (700ms, 1800ms) sui fallimenti transitori dei modelli free (rate-limit/empty), evitando il falso "Ops". Conferma: 1° tentativo fallito → retry OK.
@@ -17,7 +16,6 @@ conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarr
 - **Prompt**: agente di ricerca (best practice OpenAI/Anthropic/Google + RFC-5545) → prompt con procedura RRULE numerata, contrasto "ogni sabato"≠"un sabato al mese", legenda giorni, self-check. Centralizzati in `AssistantPrompts.kt`.
 
 ## Decisioni architetturali chiave
-
 
 - **AI capisce + struttura, l'app è la verità.** L'AI interpreta il linguaggio e produce dati strutturati
   (evento, **RRULE**); il **DB + codice deterministico** salva, espande le occorrenze, disegna il calendario
@@ -33,12 +31,10 @@ conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarr
 
 ## Scelte di libreria (l'utente gradisce librerie utili)
 
-
 - **kizitonwose Calendar Compose** (griglia mese), **DataStore** (profilo/impostazioni), **lib-recur** (RRULE),
   **material-icons-extended**, **Ktor** (OpenRouter), **Compose Material 3 Expressive**.
 
 ## AI / OpenRouter
-
 
 - Modelli **free** con structured output / json_object + **parsing tollerante** (i free ignorano `strict`).
 - Chiave **dev via BuildConfig** (da `local.properties`, gitignored) per i test; login **PKCE** per-utente pianificato.
@@ -46,16 +42,13 @@ conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarr
 
 ## Stato build
 
-
 - Gradle 9.6 / AGP 9.2.1 (built-in Kotlin) / Kotlin 2.3.10 / KSP 2.3.9 / compileSdk 37 / minSdk 26.
 - DB Room con **migrazione distruttiva** (fase dev).
 
 ## Backlog migliorie pianificate (in autonomia)
 
-
-1. **Motore conflitti + riarrangiamento** (cuore della visione): rilevare sovrapposizioni con routine/eventi,
-   proporre/riarrangiare, notificare.
-2. **Assistente che modifica/sposta/elimina eventi esistenti** (riarrangiamento via chat).
+1. **Motore conflitti automatico**: oltre al rilevamento conversazionale (già attivo), evidenziare
+   visivamente le sovrapposizioni nel calendario e proporre slot alternativi.
+2. **Integrazione CalendarContract** (Google/Samsung Calendar) — requisito core "non standalone".
 3. **Login PKCE** (sostituisce la dev key).
-4. **Integrazione CalendarContract** (Google/Samsung Calendar) — requisito core "non standalone".
-5. **Rifinitura**: tocchi Material 3 Expressive, stati loading/errore, più test.
+4. **Rifinitura**: tocchi Material 3 Expressive, stati loading/errore, più test.
