@@ -80,6 +80,30 @@ class OpenRouterApi @Inject constructor(
         return parseEvent(text)
     }
 
+    /** Conversational call: sends [messages], returns the assistant's raw JSON content. */
+    suspend fun chat(messages: List<ChatMessage>): String {
+        val key = keyProvider.currentKey() ?: error("OpenRouter key not available")
+        val request = ChatJsonRequest(models = OPENROUTER_EVENT_MODELS, messages = messages)
+
+        val http = client.post("$BASE_URL/chat/completions") {
+            header(HttpHeaders.Authorization, "Bearer $key")
+            header("HTTP-Referer", APP_REFERER)
+            header("X-Title", APP_TITLE)
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        val bodyText = http.bodyAsText()
+        if (!http.status.isSuccess()) {
+            Log.w(TAG, "OpenRouter ${http.status}: ${bodyText.take(300)}")
+            error("OpenRouter HTTP ${http.status}")
+        }
+        val response = json.decodeFromString(ChatResponse.serializer(), bodyText)
+        val message = response.choices.firstOrNull()?.message
+        return message?.content?.takeIf { it.isNotBlank() }
+            ?: message?.reasoning?.takeIf { it.isNotBlank() }
+            ?: error("Empty OpenRouter response")
+    }
+
     /**
      * Tolerant parse: free models often ignore strict json_schema (wrong key names, code
      * fences, extra prose). Pull out the JSON object and read each field by trying several

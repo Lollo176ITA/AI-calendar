@@ -12,14 +12,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.lorenzo.aicalendar.ui.assistant.AssistantScreen
 import com.lorenzo.aicalendar.ui.calendar.CalendarScreen
 import com.lorenzo.aicalendar.ui.onboarding.OnboardingScreen
-import com.lorenzo.aicalendar.ui.quickadd.QuickAddScreen
 import com.lorenzo.aicalendar.ui.settings.SettingsScreen
 
 private object Routes {
     const val CALENDAR = "calendar"
-    const val QUICK_ADD = "quickadd"
+    const val ASSISTANT = "assistant"
     const val SETTINGS = "settings"
 }
 
@@ -43,12 +43,12 @@ private fun MainGraph() {
     NavHost(navController = nav, startDestination = Routes.CALENDAR) {
         composable(Routes.CALENDAR) {
             CalendarScreen(
-                onAddEvent = { nav.navigate(Routes.QUICK_ADD) },
+                onAddEvent = { nav.navigate(Routes.ASSISTANT) },
                 onOpenSettings = { nav.navigate(Routes.SETTINGS) },
             )
         }
-        composable(Routes.QUICK_ADD) {
-            QuickAddScreen(onClose = { nav.popBackStack() })
+        composable(Routes.ASSISTANT) {
+            AssistantScreen(onClose = { nav.popBackStack() })
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(onClose = { nav.popBackStack() })

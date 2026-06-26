@@ -4,10 +4,11 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 /**
- * App database. exportSchema is off for the MVP; switch it on with a schema directory
- * when we introduce migrations (post-MVP).
+ * App database. exportSchema off for the MVP; bumped to v2 to add chat_messages.
+ * DatabaseModule uses destructive migration (dev-stage; no migrations to maintain yet).
  */
-@Database(entities = [EventEntity::class], version = 1, exportSchema = false)
+@Database(entities = [EventEntity::class, ChatMessageEntity::class], version = 2, exportSchema = false)
 abstract class AiCalendarDatabase : RoomDatabase() {
     abstract fun eventDao(): EventDao
+    abstract fun chatDao(): ChatDao
 }

@@ -3,6 +3,7 @@ package com.lorenzo.aicalendar.di
 import android.content.Context
 import androidx.room.Room
 import com.lorenzo.aicalendar.data.local.AiCalendarDatabase
+import com.lorenzo.aicalendar.data.local.ChatDao
 import com.lorenzo.aicalendar.data.local.EventDao
 import dagger.Module
 import dagger.Provides
@@ -18,8 +19,13 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AiCalendarDatabase =
-        Room.databaseBuilder(context, AiCalendarDatabase::class.java, "aicalendar.db").build()
+        Room.databaseBuilder(context, AiCalendarDatabase::class.java, "aicalendar.db")
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
 
     @Provides
     fun provideEventDao(db: AiCalendarDatabase): EventDao = db.eventDao()
+
+    @Provides
+    fun provideChatDao(db: AiCalendarDatabase): ChatDao = db.chatDao()
 }

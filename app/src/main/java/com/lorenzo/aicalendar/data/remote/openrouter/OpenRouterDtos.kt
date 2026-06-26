@@ -47,6 +47,19 @@ data class ProviderOptions(
     @SerialName("data_collection") val dataCollection: String = "deny",
 )
 
+/** Simpler "respond in JSON" mode (no schema) — used by the conversational assistant. */
+@Serializable
+data class JsonObjectFormat(val type: String = "json_object")
+
+@Serializable
+data class ChatJsonRequest(
+    val models: List<String>,
+    val messages: List<ChatMessage>,
+    @SerialName("response_format") val responseFormat: JsonObjectFormat = JsonObjectFormat(),
+    val provider: ProviderOptions = ProviderOptions(),
+    val temperature: Double = 0.3,
+)
+
 @Serializable
 data class ChatResponse(val choices: List<Choice> = emptyList())
 
