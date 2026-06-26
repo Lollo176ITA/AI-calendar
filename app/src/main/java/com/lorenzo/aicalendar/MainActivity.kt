@@ -9,8 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.lorenzo.aicalendar.ui.AppNavHost
 import com.lorenzo.aicalendar.ui.theme.AppTheme
-import com.lorenzo.aicalendar.ui.today.TodayScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
         maybeRequestNotificationPermission()
         setContent {
             AppTheme {
-                TodayScreen()
+                AppNavHost()
             }
         }
     }

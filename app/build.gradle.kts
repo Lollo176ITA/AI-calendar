@@ -63,6 +63,13 @@ dependencies {
 
     // Coroutines / Flow
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services) // Task.await() for ML Kit
+
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
+
+    // On-device AI: ML Kit Entity Extraction (date/time, offline, Italian)
+    implementation(libs.mlkit.entity.extraction)
 
     // Persistence (Room) — processor via KSP
     implementation(libs.androidx.room.runtime)

@@ -31,9 +31,12 @@ import java.util.Locale
 private val dateHeaderFormatter = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.ITALIAN)
 
 @Composable
-fun TodayScreen(viewModel: TodayViewModel = hiltViewModel()) {
+fun TodayScreen(
+    onAddEvent: () -> Unit,
+    viewModel: TodayViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    TodayContent(state = state, onAddSample = viewModel::addSampleEvent)
+    TodayContent(state = state, onAddEvent = onAddEvent)
 }
 
 /** Stateless content — easy to preview and (later) screenshot-test without Hilt. */
@@ -41,12 +44,12 @@ fun TodayScreen(viewModel: TodayViewModel = hiltViewModel()) {
 @Composable
 fun TodayContent(
     state: TodayUiState,
-    onAddSample: () -> Unit,
+    onAddEvent: () -> Unit,
 ) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Oggi") }) },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddSample) {
+            FloatingActionButton(onClick = onAddEvent) {
                 Icon(Icons.Filled.Add, contentDescription = "Aggiungi evento")
             }
         },
