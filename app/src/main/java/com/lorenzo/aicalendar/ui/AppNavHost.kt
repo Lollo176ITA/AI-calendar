@@ -15,12 +15,20 @@ import androidx.navigation.compose.rememberNavController
 import com.lorenzo.aicalendar.ui.assistant.AssistantScreen
 import com.lorenzo.aicalendar.ui.calendar.CalendarScreen
 import com.lorenzo.aicalendar.ui.onboarding.OnboardingScreen
+import com.lorenzo.aicalendar.ui.sections.RecurringScreen
+import com.lorenzo.aicalendar.ui.sections.SearchScreen
+import com.lorenzo.aicalendar.ui.sections.SummaryScreen
+import com.lorenzo.aicalendar.ui.sections.UpcomingScreen
 import com.lorenzo.aicalendar.ui.settings.SettingsScreen
 
-private object Routes {
+object AppDestinations {
     const val CALENDAR = "calendar"
     const val ASSISTANT = "assistant"
     const val SETTINGS = "settings"
+    const val UPCOMING = "upcoming"
+    const val RECURRING = "recurring"
+    const val SEARCH = "search"
+    const val SUMMARY = "summary"
 }
 
 /** Root: gates first launch on the onboarding flag, then shows the main navigation graph. */
@@ -40,18 +48,20 @@ fun AppNavHost(rootViewModel: RootViewModel = hiltViewModel()) {
 @Composable
 private fun MainGraph() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Routes.CALENDAR) {
-        composable(Routes.CALENDAR) {
+    val back: () -> Unit = { nav.popBackStack() }
+
+    NavHost(navController = nav, startDestination = AppDestinations.CALENDAR) {
+        composable(AppDestinations.CALENDAR) {
             CalendarScreen(
-                onAddEvent = { nav.navigate(Routes.ASSISTANT) },
-                onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                onAddEvent = { nav.navigate(AppDestinations.ASSISTANT) },
+                onNavigate = { route -> nav.navigate(route) },
             )
         }
-        composable(Routes.ASSISTANT) {
-            AssistantScreen(onClose = { nav.popBackStack() })
-        }
-        composable(Routes.SETTINGS) {
-            SettingsScreen(onClose = { nav.popBackStack() })
-        }
+        composable(AppDestinations.ASSISTANT) { AssistantScreen(onClose = back) }
+        composable(AppDestinations.SETTINGS) { SettingsScreen(onClose = back) }
+        composable(AppDestinations.UPCOMING) { UpcomingScreen(onClose = back) }
+        composable(AppDestinations.RECURRING) { RecurringScreen(onClose = back) }
+        composable(AppDestinations.SEARCH) { SearchScreen(onClose = back) }
+        composable(AppDestinations.SUMMARY) { SummaryScreen(onClose = back) }
     }
 }

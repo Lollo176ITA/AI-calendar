@@ -26,6 +26,9 @@ interface EventDao {
     @Query("SELECT * FROM events WHERE recurrenceFreq IS NOT NULL")
     suspend fun getRecurring(): List<EventEntity>
 
+    @Query("SELECT * FROM events WHERE title LIKE '%' || :query || '%' ORDER BY startEpochMillis DESC")
+    fun search(query: String): Flow<List<EventEntity>>
+
     @Query("SELECT * FROM events WHERE id = :id")
     suspend fun getById(id: String): EventEntity?
 

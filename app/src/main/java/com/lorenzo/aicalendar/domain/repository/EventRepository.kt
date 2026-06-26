@@ -36,6 +36,12 @@ interface EventRepository {
      */
     suspend fun getUpcomingEvents(from: Instant, zone: ZoneId): List<CalendarEvent>
 
+    /** Recurring "master" events, for the Ricorrenti section. */
+    fun observeRecurringEvents(): Flow<List<CalendarEvent>>
+
+    /** Events whose title contains [query], for the Ricerca section. */
+    fun searchEvents(query: String): Flow<List<CalendarEvent>>
+
     suspend fun getEvent(id: String): CalendarEvent?
 
     /** Inserts a new event or replaces the existing one with the same id. */

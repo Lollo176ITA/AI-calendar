@@ -22,21 +22,32 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
+import com.lorenzo.aicalendar.ui.AppDestinations
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
@@ -75,7 +87,7 @@ private val dayShortFmt = DateTimeFormatter.ofPattern("d MMM", IT)
 @Composable
 fun CalendarScreen(
     onAddEvent: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onNavigate: (String) -> Unit,
     viewModel: CalendarViewModel = hiltViewModel(),
 ) {
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
@@ -83,13 +95,25 @@ fun CalendarScreen(
     val eventsByDay by viewModel.eventsByDay.collectAsStateWithLifecycle()
     val today = viewModel.today()
 
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            CalendarDrawer(onItem = { route ->
+                scope.launch { drawerState.close() }
+                onNavigate(route)
+            })
+        },
+    ) {
     Scaffold(
         topBar = {
             CalendarTopBar(
                 viewMode = viewMode,
                 onSetViewMode = viewModel::setViewMode,
-                onProfile = onOpenSettings,
-                onSettings = onOpenSettings,
+                onProfile = { scope.launch { drawerState.open() } },
+                onSettings = { onNavigate(AppDestinations.SETTINGS) },
             )
         },
         floatingActionButton = {
@@ -124,6 +148,35 @@ fun CalendarScreen(
                     onSelect = viewModel::selectDate,
                 )
             }
+        }
+    }
+    }
+}
+
+@Composable
+private fun CalendarDrawer(onItem: (String) -> Unit) {
+    ModalDrawerSheet {
+        Text(
+            "AI-calendar",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(24.dp),
+        )
+        HorizontalDivider()
+        val items = listOf(
+            Triple(AppDestinations.UPCOMING, "Prossimi eventi", Icons.Filled.Event),
+            Triple(AppDestinations.RECURRING, "Ricorrenti", Icons.Filled.Repeat),
+            Triple(AppDestinations.SEARCH, "Ricerca", Icons.Filled.Search),
+            Triple(AppDestinations.SUMMARY, "Riepilogo", Icons.Filled.BarChart),
+            Triple(AppDestinations.SETTINGS, "Impostazioni", Icons.Filled.Settings),
+        )
+        items.forEach { (route, label, icon) ->
+            NavigationDrawerItem(
+                label = { Text(label) },
+                icon = { Icon(icon, contentDescription = null) },
+                selected = false,
+                onClick = { onItem(route) },
+                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+            )
         }
     }
 }

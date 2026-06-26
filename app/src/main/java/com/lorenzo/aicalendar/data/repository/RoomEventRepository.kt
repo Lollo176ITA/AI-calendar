@@ -71,6 +71,12 @@ class RoomEventRepository @Inject constructor(
         return (nonRecurring + recurringNext).sortedBy { it.start }
     }
 
+    override fun observeRecurringEvents(): Flow<List<CalendarEvent>> =
+        dao.observeRecurring().map { rows -> rows.map { it.toDomain() } }
+
+    override fun searchEvents(query: String): Flow<List<CalendarEvent>> =
+        dao.search(query).map { rows -> rows.map { it.toDomain() } }
+
     override suspend fun getEvent(id: String): CalendarEvent? = dao.getById(id)?.toDomain()
 
     override suspend fun upsert(event: CalendarEvent) = dao.upsert(event.toEntity())
