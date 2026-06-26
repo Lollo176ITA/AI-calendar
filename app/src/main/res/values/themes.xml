@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Base Activity theme (launch window only). Colors and components come from the
+        Compose MaterialExpressiveTheme; this just provides an action-bar-less window.
+    -->
+    <style name="Theme.AiCalendar" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
