@@ -1,10 +1,20 @@
+import java.util.Properties
+
 plugins {
     // AGP 9 built-in Kotlin: no kotlin-android plugin. Compose compiler plugin still required.
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
+
+// Dev-only OpenRouter key from local.properties (gitignored) → BuildConfig for debug testing.
+// Production uses the per-user PKCE flow, not this key.
+val openRouterDevKey: String = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}.getProperty("openrouter.devKey", "")
 
 android {
     namespace = "com.lorenzo.aicalendar"
@@ -17,6 +27,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "OPENROUTER_DEV_KEY", "\"$openRouterDevKey\"")
     }
 
     buildTypes {
@@ -36,6 +47,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     // Kotlin jvmTarget inherits from compileOptions.targetCompatibility (17) under AGP 9 built-in Kotlin.
 }
@@ -70,6 +82,13 @@ dependencies {
 
     // On-device AI: ML Kit Entity Extraction (date/time, offline, Italian)
     implementation(libs.mlkit.entity.extraction)
+
+    // Cloud AI: OpenRouter via Ktor + kotlinx.serialization
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.logging)
+    implementation(libs.kotlinx.serialization.json)
 
     // Persistence (Room) — processor via KSP
     implementation(libs.androidx.room.runtime)

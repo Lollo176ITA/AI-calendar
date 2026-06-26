@@ -1,6 +1,8 @@
 package com.lorenzo.aicalendar.di
 
-import com.lorenzo.aicalendar.data.extract.OnDeviceEventExtractor
+import com.lorenzo.aicalendar.data.auth.ApiKeyProvider
+import com.lorenzo.aicalendar.data.auth.DevApiKeyProvider
+import com.lorenzo.aicalendar.data.extract.HybridEventExtractor
 import com.lorenzo.aicalendar.domain.extract.EventExtractor
 import dagger.Binds
 import dagger.Module
@@ -12,8 +14,13 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 abstract class ExtractorModule {
 
-    // Slice 6: on-device only. Slice 7 swaps this for the hybrid (on-device + OpenRouter) extractor.
+    // Hybrid = cloud (OpenRouter) first, on-device fallback.
     @Binds
     @Singleton
-    abstract fun bindEventExtractor(impl: OnDeviceEventExtractor): EventExtractor
+    abstract fun bindEventExtractor(impl: HybridEventExtractor): EventExtractor
+
+    // MVP debug: dev key from BuildConfig. Slice 7b swaps in the PKCE per-user provider.
+    @Binds
+    @Singleton
+    abstract fun bindApiKeyProvider(impl: DevApiKeyProvider): ApiKeyProvider
 }
