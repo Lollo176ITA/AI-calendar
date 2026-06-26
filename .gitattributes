@@ -1,0 +1,11 @@
+# Normalize line endings. Keep shell wrapper LF and batch files CRLF so they work.
+* text=auto eol=lf
+*.bat text eol=crlf
+gradlew text eol=lf
+
+# Treat as binary (no eol/diff munging)
+*.jar binary
+*.png binary
+*.webp binary
+*.keystore binary
+*.jks binary
