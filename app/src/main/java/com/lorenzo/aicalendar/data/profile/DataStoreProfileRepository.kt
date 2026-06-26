@@ -30,6 +30,7 @@ class DataStoreProfileRepository @Inject constructor(
             city = p[CITY].orEmpty(),
             profession = p[PROFESSION]?.let { runCatching { Profession.valueOf(it) }.getOrNull() }
                 ?: Profession.UNSPECIFIED,
+            routine = p[ROUTINE].orEmpty(),
         )
     }
 
@@ -44,6 +45,7 @@ class DataStoreProfileRepository @Inject constructor(
             profile.birthDate?.let { p[BIRTH_EPOCH_DAY] = it.toEpochDay() } ?: p.remove(BIRTH_EPOCH_DAY)
             p[CITY] = profile.city
             p[PROFESSION] = profile.profession.name
+            p[ROUTINE] = profile.routine
         }
     }
 
@@ -58,6 +60,7 @@ class DataStoreProfileRepository @Inject constructor(
         val BIRTH_EPOCH_DAY = longPreferencesKey("birth_epoch_day")
         val CITY = stringPreferencesKey("city")
         val PROFESSION = stringPreferencesKey("profession")
+        val ROUTINE = stringPreferencesKey("routine")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     }
 }

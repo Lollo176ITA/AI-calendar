@@ -49,6 +49,7 @@ fun ProfileForm(
     profile: UserProfile,
     onChange: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
+    showRoutine: Boolean = true,
 ) {
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
@@ -93,6 +94,25 @@ fun ProfileForm(
             selected = profile.profession,
             onSelect = { onChange(profile.copy(profession = it)) },
         )
+
+        if (showRoutine) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "La tua routine",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = profile.routine,
+                    onValueChange = { onChange(profile.copy(routine = it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    placeholder = {
+                        Text("Es: lun-ven lavoro 9-18, palestra mar/gio alle 19, domenica libero")
+                    },
+                )
+            }
+        }
     }
 }
 

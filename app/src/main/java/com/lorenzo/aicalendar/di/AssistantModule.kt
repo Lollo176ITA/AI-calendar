@@ -1,8 +1,10 @@
 package com.lorenzo.aicalendar.di
 
 import com.lorenzo.aicalendar.data.assistant.HybridAssistant
+import com.lorenzo.aicalendar.data.assistant.OpenRouterRoutineOnboarder
 import com.lorenzo.aicalendar.data.chat.RoomChatRepository
 import com.lorenzo.aicalendar.domain.assistant.AiAssistant
+import com.lorenzo.aicalendar.domain.assistant.RoutineOnboarder
 import com.lorenzo.aicalendar.domain.chat.ChatRepository
 import dagger.Binds
 import dagger.Module
@@ -21,4 +23,8 @@ abstract class AssistantModule {
     @Binds
     @Singleton
     abstract fun bindAiAssistant(impl: HybridAssistant): AiAssistant
+
+    @Binds
+    @Singleton
+    abstract fun bindRoutineOnboarder(impl: OpenRouterRoutineOnboarder): RoutineOnboarder
 }

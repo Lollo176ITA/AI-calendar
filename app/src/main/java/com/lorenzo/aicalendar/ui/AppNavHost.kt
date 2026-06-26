@@ -14,7 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.lorenzo.aicalendar.ui.assistant.AssistantScreen
 import com.lorenzo.aicalendar.ui.calendar.CalendarScreen
-import com.lorenzo.aicalendar.ui.onboarding.OnboardingScreen
+import com.lorenzo.aicalendar.ui.onboarding.OnboardingFlow
 import com.lorenzo.aicalendar.ui.sections.RecurringScreen
 import com.lorenzo.aicalendar.ui.sections.SearchScreen
 import com.lorenzo.aicalendar.ui.sections.SummaryScreen
@@ -40,7 +40,7 @@ fun AppNavHost(rootViewModel: RootViewModel = hiltViewModel()) {
         null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        false -> OnboardingScreen()
+        false -> OnboardingFlow()
         true -> MainGraph()
     }
 }

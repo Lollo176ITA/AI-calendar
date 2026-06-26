@@ -19,15 +19,18 @@ class OnboardingViewModel @Inject constructor(
     private val _profile = MutableStateFlow(UserProfile())
     val profile: StateFlow<UserProfile> = _profile.asStateFlow()
 
+    private val _saved = MutableStateFlow(false)
+    val saved: StateFlow<Boolean> = _saved.asStateFlow()
+
     fun update(profile: UserProfile) {
         _profile.value = profile
     }
 
-    /** Saves the profile and marks onboarding done → the app root switches to the calendar. */
-    fun finish() {
+    /** Saves the profile; onboarding is marked complete later, after the routine chat. */
+    fun saveProfile() {
         viewModelScope.launch {
             repository.save(_profile.value)
-            repository.setOnboardingCompleted(true)
+            _saved.value = true
         }
     }
 }

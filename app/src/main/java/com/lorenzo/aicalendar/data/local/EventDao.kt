@@ -20,10 +20,10 @@ interface EventDao {
     suspend fun getStartingAtOrAfter(fromMillis: Long): List<EventEntity>
 
     /** Recurring "master" events (expanded into occurrences in code). */
-    @Query("SELECT * FROM events WHERE recurrenceFreq IS NOT NULL")
+    @Query("SELECT * FROM events WHERE recurrenceRule IS NOT NULL")
     fun observeRecurring(): Flow<List<EventEntity>>
 
-    @Query("SELECT * FROM events WHERE recurrenceFreq IS NOT NULL")
+    @Query("SELECT * FROM events WHERE recurrenceRule IS NOT NULL")
     suspend fun getRecurring(): List<EventEntity>
 
     @Query("SELECT * FROM events WHERE title LIKE '%' || :query || '%' ORDER BY startEpochMillis DESC")

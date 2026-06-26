@@ -33,8 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
-import com.lorenzo.aicalendar.domain.model.Frequency
-import com.lorenzo.aicalendar.domain.model.Recurrence
 import com.lorenzo.aicalendar.ui.calendar.EventCard
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -124,7 +122,7 @@ private fun RecurringRow(event: CalendarEvent, onDelete: () -> Unit) {
                 Text(event.title, style = MaterialTheme.typography.titleMedium)
                 event.recurrence?.let {
                     Text(
-                        recurrenceLabel(it),
+                        it.label.ifBlank { "Ricorrente" },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -197,12 +195,3 @@ private fun StatCard(label: String, value: Int) {
     }
 }
 
-private fun recurrenceLabel(r: Recurrence): String {
-    val (one, many) = when (r.frequency) {
-        Frequency.DAILY -> "giorno" to "giorni"
-        Frequency.WEEKLY -> "settimana" to "settimane"
-        Frequency.MONTHLY -> "mese" to "mesi"
-        Frequency.YEARLY -> "anno" to "anni"
-    }
-    return if (r.interval == 1) "Ogni $one" else "Ogni ${r.interval} $many"
-}

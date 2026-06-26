@@ -15,6 +15,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -23,8 +24,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lorenzo.aicalendar.ui.profile.ProfileForm
 
 @Composable
-fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
+fun OnboardingScreen(
+    onContinue: () -> Unit,
+    viewModel: OnboardingViewModel = hiltViewModel(),
+) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
+    val saved by viewModel.saved.collectAsStateWithLifecycle()
+
+    LaunchedEffect(saved) { if (saved) onContinue() }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Benvenuto") }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
@@ -38,10 +45,11 @@ fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
                 profile = profile,
                 onChange = viewModel::update,
                 modifier = Modifier.weight(1f),
+                showRoutine = false,
             )
             Spacer(Modifier.height(12.dp))
-            Button(onClick = viewModel::finish, modifier = Modifier.fillMaxWidth()) {
-                Text("Inizia")
+            Button(onClick = viewModel::saveProfile, modifier = Modifier.fillMaxWidth()) {
+                Text("Continua")
             }
         }
     }

@@ -76,11 +76,14 @@ data class ExtractedEvent(
     val allDay: Boolean = false,
 )
 
-/** Free models that advertise `structured_outputs`, best Italian first (verified on /models). */
+/**
+ * Free models with `structured_outputs`, strongest/best-Italian first. qwen3-next leads
+ * (great multilingual instruction-following); gpt-oss-20b dropped (weak at RRULE ordinals).
+ */
 val OPENROUTER_EVENT_MODELS = listOf(
     "qwen/qwen3-next-80b-a3b-instruct:free",
-    "openai/gpt-oss-20b:free",
     "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
 )
 
 /** Strict json_schema for a CalendarEvent. Nullable fields are unions but still required. */

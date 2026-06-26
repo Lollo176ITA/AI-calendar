@@ -2,7 +2,6 @@ package com.lorenzo.aicalendar.data.local
 
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
 import com.lorenzo.aicalendar.domain.model.EventSource
-import com.lorenzo.aicalendar.domain.model.Frequency
 import com.lorenzo.aicalendar.domain.model.Recurrence
 import java.time.Instant
 import java.time.ZoneId
@@ -20,9 +19,7 @@ fun EventEntity.toDomain(): CalendarEvent = CalendarEvent(
     // Tolerate unknown/renamed values so an older row can't crash the app.
     source = runCatching { EventSource.valueOf(source) }.getOrDefault(EventSource.MANUAL),
     reminderOffsetMin = reminderOffsetMin,
-    recurrence = recurrenceFreq
-        ?.let { freq -> runCatching { Frequency.valueOf(freq) }.getOrNull() }
-        ?.let { Recurrence(it, recurrenceInterval.coerceAtLeast(1)) },
+    recurrence = recurrenceRule?.let { Recurrence(it, recurrenceLabel.orEmpty()) },
     createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
     updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
 )
@@ -39,8 +36,8 @@ fun CalendarEvent.toEntity(): EventEntity = EventEntity(
     notes = notes,
     source = source.name,
     reminderOffsetMin = reminderOffsetMin,
-    recurrenceFreq = recurrence?.frequency?.name,
-    recurrenceInterval = recurrence?.interval ?: 1,
+    recurrenceRule = recurrence?.rrule,
+    recurrenceLabel = recurrence?.label,
     createdAtEpochMillis = createdAt.toEpochMilli(),
     updatedAtEpochMillis = updatedAt.toEpochMilli(),
 )

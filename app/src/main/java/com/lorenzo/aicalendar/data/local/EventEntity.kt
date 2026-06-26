@@ -20,8 +20,8 @@ data class EventEntity(
     val notes: String?,
     val source: String,
     val reminderOffsetMin: Int?,
-    val recurrenceFreq: String? = null,
-    val recurrenceInterval: Int = 1,
+    val recurrenceRule: String? = null,
+    val recurrenceLabel: String? = null,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
 )

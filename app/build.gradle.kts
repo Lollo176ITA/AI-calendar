@@ -83,6 +83,9 @@ dependencies {
     // Calendar month/week grid
     implementation(libs.kizitonwose.calendar.compose)
 
+    // RRULE (RFC-5545) recurrence engine for complex repeats (e.g. first Saturday of month)
+    implementation(libs.dmfs.lib.recur)
+
     // Profile / settings storage
     implementation(libs.androidx.datastore.preferences)
 

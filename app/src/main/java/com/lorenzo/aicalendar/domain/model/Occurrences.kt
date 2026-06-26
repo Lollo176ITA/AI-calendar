@@ -1,63 +1,72 @@
 package com.lorenzo.aicalendar.domain.model
 
+import org.dmfs.rfc5545.DateTime
+import org.dmfs.rfc5545.recur.RecurrenceRule
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZonedDateTime
+import java.util.TimeZone
 
-private const val MAX_OCCURRENCES = 1500
+private const val MAX_OCCURRENCES = 2000
 
 /**
- * Expands an event into its occurrences within `[rangeStart, rangeEnd)`.
- * A non-recurring event yields itself (if in range); a recurring one yields zone-aware
- * occurrences stepping by frequency × interval, each as a copy with a shifted start/end.
+ * Expands an event into its occurrences within `[rangeStart, rangeEnd)`. Non-recurring events
+ * yield themselves (if in range); recurring ones expand their RRULE with lib-recur, anchored at
+ * the event start (so the time-of-day and any BY* rules are honored, DST-correctly).
  */
 fun CalendarEvent.occurrencesInRange(
     rangeStart: Instant,
     rangeEnd: Instant,
     zone: ZoneId,
 ): List<CalendarEvent> {
-    val rule = recurrence
+    val rule = parsedRuleOrNull()
         ?: return if (!start.isBefore(rangeStart) && start.isBefore(rangeEnd)) listOf(this) else emptyList()
 
+    val tz = TimeZone.getTimeZone(zone)
     val durationMillis = effectiveEnd.toEpochMilli() - start.toEpochMilli()
-    val base = start.atZone(zone)
-    val result = mutableListOf<CalendarEvent>()
+    val iterator = rule.iterator(dateTimeOf(start, zone, tz))
+    if (rangeStart.isAfter(start)) iterator.fastForward(dateTimeOf(rangeStart, zone, tz))
 
-    var i = 0
-    while (i < MAX_OCCURRENCES) {
-        val occ = base.advance(rule, i).toInstant()
-        if (!occ.isBefore(rangeEnd)) break
-        if (!occ.isBefore(rangeStart)) {
+    val rangeEndMillis = rangeEnd.toEpochMilli()
+    val rangeStartMillis = rangeStart.toEpochMilli()
+    val result = mutableListOf<CalendarEvent>()
+    var guard = 0
+    while (iterator.hasNext() && guard < MAX_OCCURRENCES) {
+        val ms = iterator.nextMillis()
+        if (ms >= rangeEndMillis) break
+        if (ms >= rangeStartMillis) {
             result += copy(
-                id = "$id@$i",
-                start = occ,
-                end = end?.let { Instant.ofEpochMilli(occ.toEpochMilli() + durationMillis) },
+                id = "$id@$ms",
+                start = Instant.ofEpochMilli(ms),
+                end = end?.let { Instant.ofEpochMilli(ms + durationMillis) },
             )
         }
-        i++
+        guard++
     }
     return result
 }
 
-/** The first occurrence at or after [after], or null if none/non-recurring is already past. */
+/** The first occurrence at or after [after], or null if none. */
 fun CalendarEvent.nextOccurrenceStart(after: Instant, zone: ZoneId): Instant? {
-    val rule = recurrence ?: return start.takeIf { !it.isBefore(after) }
-    val base = start.atZone(zone)
-    var i = 0
-    while (i < MAX_OCCURRENCES) {
-        val occ = base.advance(rule, i).toInstant()
-        if (!occ.isBefore(after)) return occ
-        i++
+    val rule = parsedRuleOrNull() ?: return start.takeIf { !it.isBefore(after) }
+
+    val tz = TimeZone.getTimeZone(zone)
+    val iterator = rule.iterator(dateTimeOf(start, zone, tz))
+    if (after.isAfter(start)) iterator.fastForward(dateTimeOf(after, zone, tz))
+
+    val afterMillis = after.toEpochMilli()
+    var guard = 0
+    while (iterator.hasNext() && guard < MAX_OCCURRENCES) {
+        val ms = iterator.nextMillis()
+        if (ms >= afterMillis) return Instant.ofEpochMilli(ms)
+        guard++
     }
     return null
 }
 
-private fun ZonedDateTime.advance(rule: Recurrence, steps: Int): ZonedDateTime {
-    val n = steps.toLong() * rule.interval
-    return when (rule.frequency) {
-        Frequency.DAILY -> plusDays(n)
-        Frequency.WEEKLY -> plusWeeks(n)
-        Frequency.MONTHLY -> plusMonths(n)
-        Frequency.YEARLY -> plusYears(n)
-    }
+private fun CalendarEvent.parsedRuleOrNull(): RecurrenceRule? =
+    recurrence?.rrule?.let { runCatching { RecurrenceRule(it) }.getOrNull() }
+
+private fun dateTimeOf(instant: Instant, zone: ZoneId, tz: TimeZone): DateTime {
+    val z = instant.atZone(zone)
+    return DateTime(tz, z.year, z.monthValue - 1, z.dayOfMonth, z.hour, z.minute, z.second)
 }

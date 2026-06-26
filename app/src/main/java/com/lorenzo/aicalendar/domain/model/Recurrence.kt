@@ -1,9 +1,13 @@
 package com.lorenzo.aicalendar.domain.model
 
-enum class Frequency { DAILY, WEEKLY, MONTHLY, YEARLY }
-
-/** How an event repeats. [interval] = every N units (e.g. WEEKLY interval 2 = every 2 weeks). */
+/**
+ * How an event repeats, as an RFC-5545 RRULE (the AI produces it; lib-recur expands it),
+ * plus a short human-readable [label] for the UI (e.g. "Ogni primo sabato del mese").
+ *
+ * Examples: "FREQ=DAILY", "FREQ=WEEKLY;BYDAY=MO,WE", "FREQ=MONTHLY;BYDAY=1SA",
+ * "FREQ=MONTHLY;BYDAY=-1FR" (last Friday), "FREQ=YEARLY".
+ */
 data class Recurrence(
-    val frequency: Frequency,
-    val interval: Int = 1,
+    val rrule: String,
+    val label: String,
 )

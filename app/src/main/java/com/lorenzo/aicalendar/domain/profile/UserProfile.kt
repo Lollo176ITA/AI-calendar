@@ -14,4 +14,6 @@ data class UserProfile(
     val birthDate: LocalDate? = null,
     val city: String = "",
     val profession: Profession = Profession.UNSPECIFIED,
+    /** Free-text weekly routine (wake/work/lessons/fixed commitments) — fed to the assistant. */
+    val routine: String = "",
 )

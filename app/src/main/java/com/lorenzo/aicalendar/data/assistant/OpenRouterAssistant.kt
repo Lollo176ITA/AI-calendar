@@ -8,16 +8,13 @@ import com.lorenzo.aicalendar.domain.chat.ChatMessage
 import com.lorenzo.aicalendar.domain.chat.ChatRole
 import com.lorenzo.aicalendar.domain.extract.EventDraft
 import com.lorenzo.aicalendar.domain.model.EventSource
-import com.lorenzo.aicalendar.domain.model.Frequency
 import com.lorenzo.aicalendar.domain.model.Recurrence
-import com.lorenzo.aicalendar.domain.profile.Profession
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.lorenzo.aicalendar.data.remote.openrouter.ChatMessage as ApiMessage
@@ -25,8 +22,6 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import javax.inject.Inject
 
 /** Cloud conversational assistant via OpenRouter (JSON {reply, event}). */
@@ -35,8 +30,6 @@ class OpenRouterAssistant @Inject constructor(
     private val json: Json,
 ) : AiAssistant {
 
-    private val dayFmt = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", Locale.ITALIAN)
-    private val eventFmt = DateTimeFormatter.ofPattern("EEE d MMM HH:mm", Locale.ITALIAN)
     private val codeFence = Regex("```(?:json)?")
 
     override suspend fun respond(
@@ -45,7 +38,7 @@ class OpenRouterAssistant @Inject constructor(
         context: AssistantContext,
     ): AssistantReply {
         val messages = buildList {
-            add(ApiMessage(role = "system", content = systemPrompt(context)))
+            add(ApiMessage(role = "system", content = AssistantPrompts.eventAssistant(context)))
             history.takeLast(20).forEach {
                 add(ApiMessage(role = if (it.role == ChatRole.USER) "user" else "assistant", content = it.text))
             }
@@ -55,30 +48,21 @@ class OpenRouterAssistant @Inject constructor(
         return parseReply(raw, context.zone)
     }
 
-    private fun systemPrompt(ctx: AssistantContext): String {
-        val today = ctx.now.atZone(ctx.zone)
-        val name = ctx.profile.firstName.takeIf { it.isNotBlank() }
-        val agenda = ctx.upcomingEvents.take(25).joinToString("\n") { e ->
-            "- ${e.start.atZone(ctx.zone).format(eventFmt)} ${e.title}" +
-                (e.location?.takeIf { it.isNotBlank() }?.let { " (@$it)" } ?: "")
-        }.ifBlank { "(nessun evento)" }
-
-        return buildString {
-            append("Sei l'assistente del calendario")
-            name?.let { append(" di $it") }
-            append(". Oggi è ${today.format(dayFmt)}, fuso ${ctx.zone.id}. ")
-            if (ctx.profile.profession != Profession.UNSPECIFIED) {
-                append("L'utente è ${ctx.profile.profession.name.lowercase()}. ")
-            }
-            append("\n\nEventi già in agenda (prossimi):\n").append(agenda)
-            append("\n\nConversa in italiano, naturale e conciso. ")
-            append("Se l'utente vuole aggiungere o spostare un evento, mettilo nel campo \"event\". ")
-            append("Risolvi le date relative rispetto a oggi (ISO-8601, es 2026-06-26T15:00:00). ")
-            append("Segnala eventuali sovrapposizioni con gli eventi esistenti; se l'intento è chiaro crea pure l'evento, altrimenti chiedi conferma e lascia \"event\" a null. ")
-            append("Se l'evento è ricorrente (ogni giorno/settimana/mese/anno), imposta \"recurrence\" con \"frequency\" tra daily|weekly|monthly|yearly e \"interval\" (intero, default 1); altrimenti \"recurrence\": null. ")
-            append("\n\nRispondi SEMPRE e SOLO con un oggetto JSON, niente altro:\n")
-            append("{\"reply\": \"<testo per l'utente>\", \"event\": {\"title\": \"...\", \"startDateTime\": \"ISO-8601\", \"endDateTime\": \"ISO-8601 o null\", \"location\": \"string o null\", \"allDay\": false, \"recurrence\": {\"frequency\": \"yearly\", \"interval\": 1} oppure null} oppure null}")
-        }
+    /**
+     * Safety net for a common model mistake: FREQ=MONTHLY with a bare BYDAY (e.g. "BYDAY=SA",
+     * which means *every* Saturday) is rewritten to the Nth-weekday derived from [start]
+     * (e.g. 27 Jun = 4th Saturday → "BYDAY=4SA"), so "un sabato al mese" really repeats monthly.
+     */
+    private fun fixMonthlyByDay(rrule: String, start: Instant, zone: ZoneId): String {
+        if (!rrule.contains("FREQ=MONTHLY", ignoreCase = true)) return rrule
+        if (rrule.contains("BYSETPOS", ignoreCase = true) || rrule.contains("BYMONTHDAY", ignoreCase = true)) return rrule
+        val match = Regex("BYDAY=([A-Za-z,+\\-0-9]+)", RegexOption.IGNORE_CASE).find(rrule) ?: return rrule
+        val value = match.groupValues[1]
+        if (value.any { it.isDigit() }) return rrule // already carries an ordinal
+        val day = value.trim().uppercase()
+        if (day !in WEEKDAY_CODES) return rrule // only a single bare weekday
+        val ordinal = (start.atZone(zone).dayOfMonth - 1) / 7 + 1
+        return rrule.replace(match.value, "BYDAY=$ordinal$day")
     }
 
     private fun parseReply(raw: String, zone: ZoneId): AssistantReply {
@@ -93,13 +77,15 @@ class OpenRouterAssistant @Inject constructor(
             if (start == null) {
                 null
             } else {
+                val recurrence = parseRecurrence(e["recurrence"])
+                    ?.let { it.copy(rrule = fixMonthlyByDay(it.rrule, start, zone)) }
                 EventDraft(
                     title = e.str("title", "event") ?: "Evento",
                     start = start,
                     end = e.str("endDateTime", "end")?.let { parseInstant(it, zone) },
                     allDay = e["allDay"]?.jsonPrimitive?.booleanOrNull ?: false,
                     location = e.str("location"),
-                    recurrence = parseRecurrence(e["recurrence"]),
+                    recurrence = recurrence,
                     source = EventSource.AI_TEXT,
                 )
             }
@@ -109,10 +95,12 @@ class OpenRouterAssistant @Inject constructor(
 
     private fun parseRecurrence(element: JsonElement?): Recurrence? {
         val obj = element?.takeIf { it !is JsonNull } as? JsonObject ?: return null
-        val freq = obj.str("frequency", "freq", "type")?.uppercase()
-            ?.let { runCatching { Frequency.valueOf(it) }.getOrNull() } ?: return null
-        val interval = (obj["interval"]?.jsonPrimitive?.intOrNull ?: 1).coerceAtLeast(1)
-        return Recurrence(freq, interval)
+        val rrule = obj.str("rrule", "rule")
+            ?.trim()?.removePrefix("RRULE:")?.removePrefix("rrule:")?.trim()
+            ?.takeIf { it.contains("FREQ=", ignoreCase = true) }
+            ?: return null
+        val label = obj.str("label", "description", "summary") ?: rrule
+        return Recurrence(rrule, label)
     }
 
     private fun JsonObject.str(vararg keys: String): String? = keys.firstNotNullOfOrNull { key ->
@@ -130,5 +118,9 @@ class OpenRouterAssistant @Inject constructor(
         val start = cleaned.indexOf('{')
         val end = cleaned.lastIndexOf('}')
         return if (start in 0 until end) cleaned.substring(start, end + 1) else cleaned
+    }
+
+    private companion object {
+        val WEEKDAY_CODES = setOf("MO", "TU", "WE", "TH", "FR", "SA", "SU")
     }
 }
