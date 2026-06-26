@@ -60,7 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
 import com.lorenzo.aicalendar.ui.AppDestinations
@@ -97,6 +97,9 @@ fun CalendarScreen(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val onEventClick: (CalendarEvent) -> Unit = {
+        onNavigate(AppDestinations.event(it.id.substringBefore("@")))
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -131,6 +134,7 @@ fun CalendarScreen(
                     onPrev = viewModel::previous,
                     onNext = viewModel::next,
                     onToday = viewModel::goToday,
+                    onEventClick = onEventClick,
                 )
                 CalendarViewMode.WEEK -> WeekView(
                     selectedDate = selectedDate,
@@ -140,12 +144,14 @@ fun CalendarScreen(
                     onPrev = viewModel::previous,
                     onNext = viewModel::next,
                     onToday = viewModel::goToday,
+                    onEventClick = onEventClick,
                 )
                 CalendarViewMode.MONTH -> MonthView(
                     selectedDate = selectedDate,
                     today = today,
                     eventsByDay = eventsByDay,
                     onSelect = viewModel::selectDate,
+                    onEventClick = onEventClick,
                 )
             }
         }
@@ -246,6 +252,7 @@ private fun DayView(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onToday: () -> Unit,
+    onEventClick: (CalendarEvent) -> Unit,
 ) {
     PeriodNav(
         title = if (isToday) "Oggi" else date.format(dayTitleFmt),
@@ -253,7 +260,7 @@ private fun DayView(
         onNext = onNext,
         onToday = onToday,
     )
-    DayEventsList(events, date)
+    DayEventsList(events, date, onEventClick)
 }
 
 @Composable
@@ -265,6 +272,7 @@ private fun WeekView(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onToday: () -> Unit,
+    onEventClick: (CalendarEvent) -> Unit,
 ) {
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
     val weekStart = selectedDate.with(TemporalAdjusters.previousOrSame(firstDayOfWeek))
@@ -290,7 +298,7 @@ private fun WeekView(
             )
         }
     }
-    DayEventsList(eventsByDay[selectedDate].orEmpty(), selectedDate)
+    DayEventsList(eventsByDay[selectedDate].orEmpty(), selectedDate, onEventClick)
 }
 
 @Composable
@@ -299,6 +307,7 @@ private fun MonthView(
     today: LocalDate,
     eventsByDay: Map<LocalDate, List<CalendarEvent>>,
     onSelect: (LocalDate) -> Unit,
+    onEventClick: (CalendarEvent) -> Unit,
 ) {
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
     val state = rememberCalendarState(
@@ -330,7 +339,7 @@ private fun MonthView(
             )
         },
     )
-    DayEventsList(eventsByDay[selectedDate].orEmpty(), selectedDate)
+    DayEventsList(eventsByDay[selectedDate].orEmpty(), selectedDate, onEventClick)
 }
 
 @Composable
@@ -396,7 +405,11 @@ private fun DayCell(
 }
 
 @Composable
-private fun DayEventsList(events: List<CalendarEvent>, date: LocalDate) {
+private fun DayEventsList(
+    events: List<CalendarEvent>,
+    date: LocalDate,
+    onEventClick: (CalendarEvent) -> Unit,
+) {
     if (events.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
@@ -412,7 +425,9 @@ private fun DayEventsList(events: List<CalendarEvent>, date: LocalDate) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(events, key = { it.id }) { event -> EventCard(event) }
+            items(events, key = { it.id }) { event ->
+                EventCard(event, onClick = { onEventClick(event) })
+            }
         }
     }
 }

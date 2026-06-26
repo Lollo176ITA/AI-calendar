@@ -7,13 +7,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.lorenzo.aicalendar.ui.assistant.AssistantScreen
 import com.lorenzo.aicalendar.ui.calendar.CalendarScreen
+import com.lorenzo.aicalendar.ui.event.EventDetailScreen
 import com.lorenzo.aicalendar.ui.onboarding.OnboardingFlow
 import com.lorenzo.aicalendar.ui.sections.RecurringScreen
 import com.lorenzo.aicalendar.ui.sections.SearchScreen
@@ -29,6 +30,8 @@ object AppDestinations {
     const val RECURRING = "recurring"
     const val SEARCH = "search"
     const val SUMMARY = "summary"
+    const val EVENT = "event/{id}"
+    fun event(id: String) = "event/$id"
 }
 
 /** Root: gates first launch on the onboarding flag, then shows the main navigation graph. */
@@ -63,5 +66,6 @@ private fun MainGraph() {
         composable(AppDestinations.RECURRING) { RecurringScreen(onClose = back) }
         composable(AppDestinations.SEARCH) { SearchScreen(onClose = back) }
         composable(AppDestinations.SUMMARY) { SummaryScreen(onClose = back) }
+        composable(AppDestinations.EVENT) { EventDetailScreen(onClose = back) }
     }
 }

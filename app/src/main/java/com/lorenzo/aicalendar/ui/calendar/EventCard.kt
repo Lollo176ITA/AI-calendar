@@ -1,5 +1,6 @@
 package com.lorenzo.aicalendar.ui.calendar
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,8 +27,8 @@ private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ITALIAN)
 
 /** One agenda event: start/end times on the left, title + optional location on the right. */
 @Composable
-fun EventCard(event: CalendarEvent, modifier: Modifier = Modifier) {
-    Card(modifier = modifier.fillMaxWidth()) {
+fun EventCard(event: CalendarEvent, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    Card(modifier = modifier.fillMaxWidth().let { if (onClick != null) it.clickable(onClick = onClick) else it }) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,

@@ -11,6 +11,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.booleanOrNull
@@ -81,7 +82,7 @@ class OpenRouterApi @Inject constructor(
     }
 
     /** Conversational call: sends [messages], returns the assistant's raw JSON content. */
-    suspend fun chat(messages: List<ChatMessage>): String {
+    suspend fun chat(messages: List<ChatMessage>): String = withRetry {
         val key = keyProvider.currentKey() ?: error("OpenRouter key not available")
         val request = ChatJsonRequest(models = OPENROUTER_EVENT_MODELS, messages = messages)
 
@@ -99,9 +100,28 @@ class OpenRouterApi @Inject constructor(
         }
         val response = json.decodeFromString(ChatResponse.serializer(), bodyText)
         val message = response.choices.firstOrNull()?.message
-        return message?.content?.takeIf { it.isNotBlank() }
+        message?.content?.takeIf { it.isNotBlank() }
             ?: message?.reasoning?.takeIf { it.isNotBlank() }
             ?: error("Empty OpenRouter response")
+    }
+
+    /**
+     * Retries a call a few times with short backoff. Free OpenRouter models hit per-minute
+     * rate limits and occasionally return an empty body; a brief retry usually clears it,
+     * sparing the user a spurious "something went wrong".
+     */
+    private suspend fun <T> withRetry(block: suspend () -> T): T {
+        var last: Throwable? = null
+        repeat(BACKOFF_MS.size + 1) { attempt ->
+            try {
+                return block()
+            } catch (e: Exception) {
+                last = e
+                Log.w(TAG, "OpenRouter attempt ${attempt + 1} failed: ${e.message}")
+                if (attempt < BACKOFF_MS.size) delay(BACKOFF_MS[attempt])
+            }
+        }
+        throw last ?: IllegalStateException("OpenRouter call failed")
     }
 
     /**
@@ -142,5 +162,8 @@ class OpenRouterApi @Inject constructor(
         const val APP_REFERER = "https://github.com/lorenzo/ai-calendar"
         const val APP_TITLE = "AI-calendar"
         val CODE_FENCE = Regex("```(?:json)?")
+
+        /** Backoff before each retry (ms); size also sets the number of extra attempts. */
+        val BACKOFF_MS = longArrayOf(700, 1800)
     }
 }
