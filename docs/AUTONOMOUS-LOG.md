@@ -4,6 +4,18 @@ Registro delle decisioni prese in autonomia (utente assente) e delle migliorie, 
 Per ogni voce: **cosa**, **perché**. Fedeltà alla visione: agenda *intelligente* (AI + algoritmi che
 conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarrangiano e notificano).
 
+## Fix routine multi-evento (giu 2026)
+
+- **L'assistente ora pianifica PIU eventi in un solo messaggio (FIX "la routine da errore")**: prima la chat
+  poteva creare un solo evento per turno, quindi descrivendo l'intera routine ("lavoro lun/mer/gio/ven 7-18,
+  martedi volontariato il pomeriggio, weekend la mattina fino alle 16") l'assistente *diceva* di averla
+  registrata ma non creava nulla nel calendario. Ora il contratto JSON usa `"events":[...]` (lista) e
+  `OpenRouterAssistant` accetta sia `events` (array) sia `event` (singolo, retrocompatibile); il VM applica
+  ogni operazione e controlla i conflitti per ciascun evento creato. Prompt aggiornato: regola esplicita
+  "se l'utente descrive una routine crea un evento per blocco, accorpando i giorni con stesso orario in un
+  BYDAY multiplo (es. FREQ=WEEKLY;BYDAY=MO,WE,TH,FR)" + esempio completo. (Rivisto a codice; non verificato su
+  emulatore in questo ambiente perché manca l'Android SDK.)
+
 ## Verificato (giu 2026, emulatore + endpoint AI)
 
 - **Integrazione calendario di sistema (CORE "non standalone")**: l'app legge gli eventi del calendario del telefono (CalendarContract.Instances, permesso READ_CALENDAR) e li mostra nel calendario in card distinte ("dal telefono · nome-calendario"), read-only. Toggle in Impostazioni con richiesta permesso. Gli eventi di sistema entrano anche nel **contesto dell'AI** (consapevolezza, ma non modificabili). Verificato: evento "Dentista" seedato via adb → appare nel giorno; toggle on/off. ✓

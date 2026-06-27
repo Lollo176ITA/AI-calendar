@@ -4,6 +4,7 @@ import com.lorenzo.aicalendar.data.remote.openrouter.OpenRouterApi
 import com.lorenzo.aicalendar.domain.assistant.AiAssistant
 import com.lorenzo.aicalendar.domain.assistant.AssistantAction
 import com.lorenzo.aicalendar.domain.assistant.AssistantContext
+import com.lorenzo.aicalendar.domain.assistant.AssistantOperation
 import com.lorenzo.aicalendar.domain.assistant.AssistantReply
 import com.lorenzo.aicalendar.domain.chat.ChatMessage
 import com.lorenzo.aicalendar.domain.chat.ChatRole
@@ -11,6 +12,7 @@ import com.lorenzo.aicalendar.domain.extract.EventDraft
 import com.lorenzo.aicalendar.domain.model.EventSource
 import com.lorenzo.aicalendar.domain.model.Recurrence
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -72,34 +74,47 @@ class OpenRouterAssistant @Inject constructor(
             ?: return AssistantReply(raw.trim().ifBlank { "Ok." })
 
         val reply = obj.str("reply", "text", "message") ?: "Ok."
-        val eventObj = obj["event"]?.takeIf { it !is JsonNull } as? JsonObject
 
-        val action = when (eventObj?.str("action")?.lowercase()) {
+        // Accept both the multi-event field ("events": [...]) and the single-event field
+        // ("event": {...}); a routine description maps to several recurring events at once.
+        val eventObjs: List<JsonObject> = buildList {
+            (obj["events"] as? JsonArray)?.forEach { el -> (el as? JsonObject)?.let { add(it) } }
+            (obj["event"]?.takeIf { it !is JsonNull } as? JsonObject)?.let { add(it) }
+        }
+
+        val operations = eventObjs.mapNotNull { parseOperation(it, zone) }
+        return AssistantReply(reply, operations)
+    }
+
+    /** Turns one event JSON object into an [AssistantOperation], or null if it carries no usable op. */
+    private fun parseOperation(e: JsonObject, zone: ZoneId): AssistantOperation? {
+        val action = when (e.str("action")?.lowercase()) {
             "update", "modify", "move", "sposta", "modifica" -> AssistantAction.UPDATE
             "delete", "remove", "cancel", "elimina", "cancella" -> AssistantAction.DELETE
             else -> AssistantAction.CREATE
         }
-        val ref = eventObj?.get("ref")?.takeIf { it !is JsonNull }?.jsonPrimitive?.intOrNull
+        val ref = e["ref"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.intOrNull
 
-        val draft = eventObj?.let { e ->
-            val start = e.str("startDateTime", "datetime", "start")?.let { parseInstant(it, zone) }
-            if (start == null) {
-                null
-            } else {
-                val recurrence = parseRecurrence(e["recurrence"])
-                    ?.let { it.copy(rrule = fixMonthlyByDay(it.rrule, start, zone)) }
-                EventDraft(
-                    title = e.str("title", "event") ?: "Evento",
-                    start = start,
-                    end = e.str("endDateTime", "end")?.let { parseInstant(it, zone) },
-                    allDay = e["allDay"]?.jsonPrimitive?.booleanOrNull ?: false,
-                    location = e.str("location"),
-                    recurrence = recurrence,
-                    source = EventSource.AI_TEXT,
-                )
-            }
+        val start = e.str("startDateTime", "datetime", "start")?.let { parseInstant(it, zone) }
+        val draft = start?.let {
+            val recurrence = parseRecurrence(e["recurrence"])
+                ?.let { r -> r.copy(rrule = fixMonthlyByDay(r.rrule, start, zone)) }
+            EventDraft(
+                title = e.str("title", "event") ?: "Evento",
+                start = start,
+                end = e.str("endDateTime", "end")?.let { v -> parseInstant(v, zone) },
+                allDay = e["allDay"]?.jsonPrimitive?.booleanOrNull ?: false,
+                location = e.str("location"),
+                recurrence = recurrence,
+                source = EventSource.AI_TEXT,
+            )
         }
-        return AssistantReply(reply, draft, action, ref)
+        // A delete only needs a ref; create/update need a draft. Skip empty objects.
+        return when {
+            action == AssistantAction.DELETE && ref != null -> AssistantOperation(action, null, ref)
+            draft != null -> AssistantOperation(action, draft, ref)
+            else -> null
+        }
     }
 
     private fun parseRecurrence(element: JsonElement?): Recurrence? {
