@@ -7,6 +7,7 @@ import com.lorenzo.aicalendar.data.settings.SettingsRepository
 import com.lorenzo.aicalendar.domain.assistant.AiAssistant
 import com.lorenzo.aicalendar.domain.assistant.AssistantAction
 import com.lorenzo.aicalendar.domain.assistant.AssistantContext
+import com.lorenzo.aicalendar.domain.assistant.AssistantOperation
 import com.lorenzo.aicalendar.domain.assistant.AssistantReply
 import com.lorenzo.aicalendar.domain.chat.ChatMessage
 import com.lorenzo.aicalendar.domain.chat.ChatRepository
@@ -78,14 +79,17 @@ class AssistantViewModel @Inject constructor(
                     context = AssistantContext(now, zone, profile, upcoming, systemEvents),
                 )
 
-                val saved = applyAction(reply, upcoming, zone)
-                val conflictNote = saved?.let { conflictWarning(it, upcoming + systemEvents, zone) }
+                val saved = applyOperations(reply, upcoming, zone)
+                // Flag each newly created/updated event that overlaps the existing agenda.
+                val conflictNote = saved
+                    .mapNotNull { event -> conflictWarning(event, upcoming + systemEvents, zone) }
+                    .joinToString("")
 
                 chatRepository.add(
                     ChatMessage(
                         UUID.randomUUID().toString(),
                         ChatRole.ASSISTANT,
-                        reply.text + conflictNote.orEmpty(),
+                        reply.text + conflictNote,
                         Instant.now(clock),
                     ),
                 )
@@ -105,20 +109,30 @@ class AssistantViewModel @Inject constructor(
     }
 
     /**
-     * Applies the assistant's intent: create a new event, or update/delete one it referenced.
-     * Returns the created/updated event (for conflict checking), or null for delete/no-op.
+     * Applies every operation the assistant proposed this turn (a routine description produces
+     * several at once). Returns the created/updated events, for conflict checking.
      */
-    private suspend fun applyAction(
+    private suspend fun applyOperations(
         reply: AssistantReply,
         upcoming: List<CalendarEvent>,
         zone: ZoneId,
+    ): List<CalendarEvent> = reply.operations.mapNotNull { applyOperation(it, upcoming, zone) }
+
+    /**
+     * Applies one operation: create a new event, or update/delete one it referenced.
+     * Returns the created/updated event (for conflict checking), or null for delete/no-op.
+     */
+    private suspend fun applyOperation(
+        op: AssistantOperation,
+        upcoming: List<CalendarEvent>,
+        zone: ZoneId,
     ): CalendarEvent? {
-        val draft = reply.eventToCreate
-        val target = reply.targetRef
+        val draft = op.draft
+        val target = op.targetRef
             ?.let { upcoming.take(AssistantContext.MAX_AGENDA).getOrNull(it - 1) }
         val ts = Instant.now(clock)
 
-        return when (reply.action) {
+        return when (op.action) {
             AssistantAction.DELETE -> {
                 target?.let { deleteEvent(it.id) }
                 null
