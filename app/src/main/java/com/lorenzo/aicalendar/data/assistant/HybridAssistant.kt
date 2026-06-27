@@ -28,23 +28,32 @@ class HybridAssistant @Inject constructor(
         userMessage: String,
         context: AssistantContext,
     ): AssistantReply {
-        if (isOnline() && keyProvider.currentKey() != null) {
+        val online = isOnline()
+        val hasKey = keyProvider.currentKey() != null
+        if (online && hasKey) {
             runCatching { return cloud.respond(history, userMessage, context) }
                 .onFailure { Log.w(TAG, "Cloud assistant failed; using on-device fallback", it) }
         }
-        // Offline / failure: try to extract a single event from the message on-device.
-        val result = onDevice.extract(
-            ExtractionInput(userMessage, context.now, context.zone, EventSource.AI_TEXT),
-        )
-        val draft = result.draft
-        return if (draft.start != null) {
-            AssistantReply(
-                text = "Sono offline, ma ho preparato «${draft.title}». Controlla i dettagli nel calendario.",
+
+        // Fallback: extract a single event on-device. Why we got here drives an honest message
+        // (genuinely offline vs missing key vs a transient cloud error — never a bare "offline").
+        val reason = when {
+            !online -> "Sembri offline"
+            !hasKey -> "L'assistente AI non è configurato in questa build"
+            else -> "Ho avuto un problema a contattare l'assistente"
+        }
+        val draft = runCatching {
+            onDevice.extract(ExtractionInput(userMessage, context.now, context.zone, EventSource.AI_TEXT)).draft
+        }.getOrNull()
+
+        return when {
+            draft?.start != null -> AssistantReply(
+                text = "$reason, ma ho preparato «${draft.title}» dal tuo messaggio: controlla i dettagli nel calendario.",
                 eventToCreate = draft,
             )
-        } else {
-            AssistantReply(
-                text = "Al momento sono offline e non ho colto una data. Riprova quando hai connessione.",
+            else -> AssistantReply(
+                text = "$reason. Riprova tra poco" +
+                    if (!hasKey) " (serve la chiave OpenRouter nella build)." else ".",
             )
         }
     }
