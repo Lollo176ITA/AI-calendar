@@ -94,11 +94,21 @@ class AssistantViewModel @Inject constructor(
                     ),
                 )
             } catch (e: Exception) {
+                val msg = when {
+                    e.message?.contains("HTTP", ignoreCase = true) == true ->
+                        "Il server dell'assistente non risponde al momento. Riprova tra qualche secondo."
+                    e.message?.contains("key", ignoreCase = true) == true ->
+                        "L'assistente AI non è configurato in questa build."
+                    e.message?.contains("Empty", ignoreCase = true) == true ->
+                        "L'assistente ha risposto in modo vuoto. Riprova, magari riformulando la frase."
+                    else ->
+                        "Ops, qualcosa è andato storto. Riprova tra qualche secondo."
+                }
                 chatRepository.add(
                     ChatMessage(
                         UUID.randomUUID().toString(),
                         ChatRole.ASSISTANT,
-                        "Ops, qualcosa è andato storto. Riprova.",
+                        msg,
                         Instant.now(clock),
                     ),
                 )

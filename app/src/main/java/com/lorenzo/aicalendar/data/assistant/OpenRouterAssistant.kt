@@ -35,6 +35,7 @@ class OpenRouterAssistant @Inject constructor(
 ) : AiAssistant {
 
     private val codeFence = Regex("```(?:json)?")
+    private val specialTokens = Regex("<\\|?(?:pad|endoftext|eos|bos|sep|cls|unk|mask)\\|?>", RegexOption.IGNORE_CASE)
 
     override suspend fun respond(
         history: List<ChatMessage>,
@@ -71,9 +72,9 @@ class OpenRouterAssistant @Inject constructor(
 
     private fun parseReply(raw: String, zone: ZoneId): AssistantReply {
         val obj = runCatching { json.parseToJsonElement(extractJson(raw)).jsonObject }.getOrNull()
-            ?: return AssistantReply(raw.trim().ifBlank { "Ok." })
+            ?: return AssistantReply(clean(raw).ifBlank { "Ok." })
 
-        val reply = obj.str("reply", "text", "message") ?: "Ok."
+        val reply = obj.str("reply", "text", "message")?.let { clean(it) } ?: "Ok."
 
         // Accept both the multi-event field ("events": [...]) and the single-event field
         // ("event": {...}); a routine description maps to several recurring events at once.
@@ -143,6 +144,9 @@ class OpenRouterAssistant @Inject constructor(
         val end = cleaned.lastIndexOf('}')
         return if (start in 0 until end) cleaned.substring(start, end + 1) else cleaned
     }
+
+    private fun clean(text: String): String =
+        text.replace(specialTokens, "").trim()
 
     private companion object {
         val WEEKDAY_CODES = setOf("MO", "TU", "WE", "TH", "FR", "SA", "SU")

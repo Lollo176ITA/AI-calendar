@@ -75,10 +75,10 @@ class OpenRouterApi @Inject constructor(
         val response = json.decodeFromString(ChatResponse.serializer(), bodyText)
         val message = response.choices.firstOrNull()?.message
         // Prefer content; some reasoning models leave content empty and answer in `reasoning`.
-        val text = message?.content?.takeIf { it.isNotBlank() }
+        val raw = message?.content?.takeIf { it.isNotBlank() }
             ?: message?.reasoning?.takeIf { it.isNotBlank() }
             ?: error("Empty OpenRouter response")
-        return parseEvent(text)
+        return parseEvent(sanitize(raw))
     }
 
     /** Conversational call: sends [messages], returns the assistant's raw JSON content. */
@@ -100,9 +100,10 @@ class OpenRouterApi @Inject constructor(
         }
         val response = json.decodeFromString(ChatResponse.serializer(), bodyText)
         val message = response.choices.firstOrNull()?.message
-        message?.content?.takeIf { it.isNotBlank() }
+        val raw = message?.content?.takeIf { it.isNotBlank() }
             ?: message?.reasoning?.takeIf { it.isNotBlank() }
             ?: error("Empty OpenRouter response")
+        sanitize(raw)
     }
 
     /**
@@ -123,6 +124,13 @@ class OpenRouterApi @Inject constructor(
         }
         throw last ?: IllegalStateException("OpenRouter call failed")
     }
+
+    /**
+     * Free models (Qwen, Gemma, Nemotron) sometimes leak special tokens into their output.
+     * Strip them so they never reach the UI or pollute conversation history.
+     */
+    private fun sanitize(text: String): String =
+        text.replace(SPECIAL_TOKENS, "").trim()
 
     /**
      * Tolerant parse: free models often ignore strict json_schema (wrong key names, code
@@ -163,8 +171,11 @@ class OpenRouterApi @Inject constructor(
         const val APP_TITLE = "AI-calendar"
         val CODE_FENCE = Regex("```(?:json)?")
 
+        /** Strips special tokens leaked by free models (Qwen <pad>, Gemma <|endoftext|>, etc.). */
+        val SPECIAL_TOKENS = Regex("<\\|?(?:pad|endoftext|eos|bos|sep|cls|unk|mask)\\|?>", RegexOption.IGNORE_CASE)
+
         /** Backoff before each retry (ms); size also sets the number of extra attempts.
-         *  One retry keeps worst-case latency bounded while still absorbing a transient blip. */
-        val BACKOFF_MS = longArrayOf(1000)
+         *  Free models are flaky — three retries absorb most transient rate-limit / empty-body errors. */
+        val BACKOFF_MS = longArrayOf(1_500, 3_000, 6_000)
     }
 }

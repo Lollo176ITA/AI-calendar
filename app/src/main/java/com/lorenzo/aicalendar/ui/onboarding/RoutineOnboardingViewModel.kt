@@ -56,7 +56,17 @@ class RoutineOnboardingViewModel @Inject constructor(
                     profileRepository.setOnboardingCompleted(true) // → app root switches to the calendar
                 }
             } catch (e: Exception) {
-                _messages.update { it + assistantMessage("Ops, qualcosa è andato storto. Riprova.") }
+                val msg = when {
+                    e.message?.contains("HTTP", ignoreCase = true) == true ->
+                        "Il server dell'assistente non risponde al momento. Riprova tra qualche secondo."
+                    e.message?.contains("key", ignoreCase = true) == true ->
+                        "L'assistente AI non è configurato in questa build."
+                    e.message?.contains("Empty", ignoreCase = true) == true ->
+                        "L'assistente ha risposto in modo vuoto. Riprova, magari riformulando la frase."
+                    else ->
+                        "Ops, qualcosa è andato storto. Riprova tra qualche secondo."
+                }
+                _messages.update { it + assistantMessage(msg) }
             } finally {
                 _sending.value = false
             }

@@ -67,8 +67,9 @@ CONTESTO
 DATE RELATIVE
 Risolvi "oggi/domani/dopodomani/lunedi prossimo/tra due settimane/stasera/questo weekend" rispetto ad adesso. Se manca l'orario, chiedilo e lascia "event": null. "Tutto il giorno" -> "allDay": true e T00:00:00. Se manca la durata, "endDateTime" = un'ora dopo "startDateTime".
 
-CONFLITTI
-Confronta con l'agenda e la routine. Se c'e sovrapposizione crea comunque l'evento ma segnalala con gentilezza nel "reply".
+CONFLITTI E DOMANDE SULL'AGENDA (IMPORTANTISSIMO)
+OGNI volta che l'utente chiede cosa ha in un dato giorno/periodo, o se e libero, o se ha impegni, DEVI incrociare TUTTE queste fonti: la lista "Impegni gia in agenda", la "Routine settimanale", e gli "Impegni dal calendario del telefono". La routine genera impegni ricorrenti (lavoro, volontariato, ecc.) anche se non compaiono esplicitamente nell'agenda: INCLUDILI SEMPRE nella risposta.
+Quando crei un evento, confronta con agenda + routine. Se c'e sovrapposizione crea comunque l'evento ma segnalala con gentilezza nel "reply".
 
 RICORRENZA (RRULE) - QUI SI SBAGLIA SPESSO, LEGGI CON ATTENZIONE
 Genera "recurrence" solo se c'e una ripetizione, altrimenti null. Procedura obbligatoria in ordine:
@@ -121,7 +122,7 @@ QUANDO HAI ABBASTANZA INFORMAZIONI
 - Quando hai un quadro sufficiente (o l'utente dice di aver finito / "salta"): riassumi tutta la routine in un testo chiaro e ordinato nel campo "routine", e nel "reply" ringrazia con calore confermando che hai salvato la routine.
 Esempio di "routine" finale: "Lavoro lun-ven 9-18. Pranzo verso le 13. Palestra mar e gio alle 19. Cena alle 20:30. Dorme verso le 23:30. Sabato spesa."
 
-Prima di rispondere verifica in silenzio: sto facendo UNA sola domanda? Il JSON e valido? Se non e completa, "routine" e null?
+Prima di rispondere verifica in silenzio: sto facendo UNA sola domanda? Il JSON e valido? Se non e completa, "routine" e null? Non ci sono token speciali come <pad> nel testo?
         """.trimIndent()
     }
 }

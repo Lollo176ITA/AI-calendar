@@ -21,6 +21,7 @@ class OpenRouterRoutineOnboarder @Inject constructor(
 ) : RoutineOnboarder {
 
     private val codeFence = Regex("```(?:json)?")
+    private val specialTokens = Regex("<\\|?(?:pad|endoftext|eos|bos|sep|cls|unk|mask)\\|?>", RegexOption.IGNORE_CASE)
 
     override suspend fun next(
         history: List<ChatMessage>,
@@ -40,14 +41,18 @@ class OpenRouterRoutineOnboarder @Inject constructor(
     private fun parse(raw: String): RoutineReply {
         val obj = runCatching {
             json.parseToJsonElement(extractJson(raw)).jsonObject
-        }.getOrNull() ?: return RoutineReply(raw.trim().ifBlank { "Ok." })
+        }.getOrNull() ?: return RoutineReply(clean(raw).ifBlank { "Ok." })
 
-        val reply = obj["reply"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+        val reply = obj["reply"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.contentOrNull
+            ?.let { clean(it) }?.takeIf { it.isNotBlank() }
             ?: "Ok."
         val routine = obj["routine"]?.takeIf { it !is JsonNull }?.jsonPrimitive?.contentOrNull
-            ?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+            ?.let { clean(it) }?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
         return RoutineReply(reply, routine)
     }
+
+    private fun clean(text: String): String =
+        text.replace(specialTokens, "").trim()
 
     private fun extractJson(raw: String): String {
         val cleaned = raw.replace(codeFence, "").trim()
