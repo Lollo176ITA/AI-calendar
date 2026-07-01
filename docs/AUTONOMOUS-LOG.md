@@ -4,6 +4,36 @@ Registro delle decisioni prese in autonomia (utente assente) e delle migliorie, 
 Per ogni voce: **cosa**, **perché**. Fedeltà alla visione: agenda *intelligente* (AI + algoritmi che
 conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarrangiano e notificano).
 
+## Voice-first: voce + home unificata + scrittura su Google Calendar (lug 2026)
+
+- **Home unificata (agenda + assistente)**: la chat non è più una schermata separata dietro il FAB.
+  La barra di input dell'assistente (stile app di messaggistica, con microfono) è sempre ancorata in
+  basso nella home; la conversazione si espande come pannello richiudibile sopra l'agenda. Il gesto
+  chiave — dire qualcosa all'AI — è a zero tap dall'apertura dell'app. Rotta `assistant` e
+  `AssistantScreen` rimossi; i componenti riusabili vivono in `AssistantPanel.kt`.
+- **Dettatura (SpeechRecognizer)**: mic nella barra di input, italiano, risultati parziali in
+  streaming nel campo di testo, permesso `RECORD_AUDIO` a runtime, errori gestiti con messaggi di
+  cortesia (no-match, busy, permesso negato). Toggle "Invio automatico dopo la dettatura" (default
+  ON): il risultato finale parte da solo verso l'assistente.
+- **Risposte vocali (TextToSpeech)**: per i turni iniziati a voce l'assistente legge la risposta ad
+  alta voce (toggle "Risposte vocali", default ON). Il gate sta nel ViewModel (flow `speakReplies`);
+  la UI possiede il TTS e lo spegne nel DisposableEffect.
+- **App shortcut "Parla con l'assistente"**: shortcut statico (`res/xml/shortcuts.xml`) con action
+  dedicata → `MainActivity` (`singleTop` + `onNewIntent`) incrementa un `voiceTrigger` che la home
+  osserva per aprire la chat con il microfono già attivo. Primo aggancio agli assistenti di sistema;
+  l'integrazione profonda (App Functions/Gemini) rimandata finché l'API non si stabilizza.
+- **Scrittura sul calendario di sistema (CalendarContract, senza OAuth)**: opt-in in Impostazioni
+  (toggle + scelta del calendario di destinazione, permesso `WRITE_CALENDAR`). Gli eventi
+  creati/modificati/eliminati nell'app vengono specchiati sul calendario Google/Samsung scelto e
+  quindi sincronizzati ovunque. Mappatura `systemEventId` in Room (DB v5); il reader esclude gli
+  eventi specchiati per non mostrarli due volte; le ricorrenze passano l'RRULE al provider con
+  DURATION al posto di DTEND (regola di CalendarContract). Se la copia viene cancellata su Google
+  Calendar, al salvataggio successivo viene ricreata.
+- **Manifest**: `<queries>` per RecognitionService/TTS (package visibility Android 11+),
+  `windowSoftInputMode=adjustResize` per la barra di input con la tastiera aperta.
+- (Non verificato su emulatore in questo ambiente — niente device; compilazione e unit test JVM
+  verdi in locale, APK debug dalla CI.)
+
 ## Fix routine multi-evento (giu 2026)
 
 - **L'assistente ora pianifica PIU eventi in un solo messaggio (FIX "la routine da errore")**: prima la chat

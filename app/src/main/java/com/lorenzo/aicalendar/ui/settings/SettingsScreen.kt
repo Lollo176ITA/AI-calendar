@@ -15,12 +15,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.lorenzo.aicalendar.data.calendar.SystemCalendarWriter
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -51,11 +60,20 @@ fun SettingsScreen(
     val showSystemCalendar by viewModel.showSystemCalendar.collectAsStateWithLifecycle()
     val voiceAutoSend by viewModel.voiceAutoSend.collectAsStateWithLifecycle()
     val voiceReplies by viewModel.voiceReplies.collectAsStateWithLifecycle()
+    val syncToSystemCalendar by viewModel.syncToSystemCalendar.collectAsStateWithLifecycle()
+    val systemCalendarId by viewModel.systemCalendarId.collectAsStateWithLifecycle()
+    val writableCalendars by viewModel.writableCalendars.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> viewModel.setShowSystemCalendar(granted) }
+
+    val writePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        viewModel.setSyncToSystemCalendar(grants[Manifest.permission.WRITE_CALENDAR] == true)
+    }
 
     Scaffold(
         topBar = {
@@ -95,6 +113,35 @@ fun SettingsScreen(
             )
             Spacer(Modifier.height(12.dp))
             SettingSwitchRow(
+                icon = Icons.Filled.EditCalendar,
+                title = "Scrivi su Google Calendar",
+                subtitle = "Gli eventi creati qui finiscono anche nel calendario del telefono",
+                checked = syncToSystemCalendar,
+                onToggle = { want ->
+                    if (!want) {
+                        viewModel.setSyncToSystemCalendar(false)
+                    } else if (
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) ==
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        viewModel.setSyncToSystemCalendar(true)
+                    } else {
+                        writePermissionLauncher.launch(
+                            arrayOf(Manifest.permission.WRITE_CALENDAR, Manifest.permission.READ_CALENDAR),
+                        )
+                    }
+                },
+            )
+            if (syncToSystemCalendar && writableCalendars.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                CalendarPickerRow(
+                    calendars = writableCalendars,
+                    selectedId = systemCalendarId,
+                    onSelect = viewModel::setSystemCalendarId,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            SettingSwitchRow(
                 icon = Icons.Filled.Mic,
                 title = "Invio automatico dopo la dettatura",
                 subtitle = "Quello che detti viene mandato subito all'assistente",
@@ -127,6 +174,51 @@ private fun SystemCalendarRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
         checked = checked,
         onToggle = onToggle,
     )
+}
+
+/** Which device calendar mirrored events are written to. */
+@Composable
+private fun CalendarPickerRow(
+    calendars: List<SystemCalendarWriter.WritableCalendar>,
+    selectedId: Long?,
+    onSelect: (Long) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    val selected = calendars.firstOrNull { it.id == selectedId } ?: calendars.first()
+
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable { open = true },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Spacer(Modifier.size(28.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Calendario di destinazione", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                listOfNotNull(selected.name, selected.account.takeIf { it.isNotBlank() })
+                    .joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(Icons.Filled.ArrowDropDown, contentDescription = "Scegli calendario")
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            calendars.forEach { calendar ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            listOfNotNull(calendar.name, calendar.account.takeIf { it.isNotBlank() })
+                                .joinToString(" · "),
+                        )
+                    },
+                    onClick = {
+                        onSelect(calendar.id)
+                        open = false
+                    },
+                )
+            }
+        }
+    }
 }
 
 @Composable

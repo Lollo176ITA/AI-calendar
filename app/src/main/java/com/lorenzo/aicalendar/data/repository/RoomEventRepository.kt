@@ -1,5 +1,6 @@
 package com.lorenzo.aicalendar.data.repository
 
+import com.lorenzo.aicalendar.data.calendar.SystemCalendarMirror
 import com.lorenzo.aicalendar.data.local.EventDao
 import com.lorenzo.aicalendar.data.local.toDomain
 import com.lorenzo.aicalendar.data.local.toEntity
@@ -15,9 +16,14 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
-/** Room-backed [EventRepository]: translates day queries to epoch-millis bounds and maps rows. */
+/**
+ * Room-backed [EventRepository]: translates day queries to epoch-millis bounds and maps rows.
+ * Saves/deletes are also mirrored to the device calendar via [SystemCalendarMirror] (when the
+ * user enabled it in Settings), keeping the CalendarContract event id alongside the Room row.
+ */
 class RoomEventRepository @Inject constructor(
     private val dao: EventDao,
+    private val mirror: SystemCalendarMirror,
 ) : EventRepository {
 
     override fun observeEventsForDay(date: LocalDate, zone: ZoneId): Flow<List<CalendarEvent>> {
@@ -79,7 +85,14 @@ class RoomEventRepository @Inject constructor(
 
     override suspend fun getEvent(id: String): CalendarEvent? = dao.getById(id)?.toDomain()
 
-    override suspend fun upsert(event: CalendarEvent) = dao.upsert(event.toEntity())
+    override suspend fun upsert(event: CalendarEvent) {
+        val existingSystemId = dao.getById(event.id)?.systemEventId
+        val systemId = mirror.sync(event, existingSystemId)
+        dao.upsert(event.toEntity().copy(systemEventId = systemId))
+    }
 
-    override suspend fun delete(id: String) = dao.deleteById(id)
+    override suspend fun delete(id: String) {
+        mirror.delete(dao.getById(id)?.systemEventId)
+        dao.deleteById(id)
+    }
 }

@@ -22,6 +22,8 @@ data class EventEntity(
     val reminderOffsetMin: Int?,
     val recurrenceRule: String? = null,
     val recurrenceLabel: String? = null,
+    /** CalendarContract event id of the mirrored copy in the device calendar, if any. */
+    val systemEventId: Long? = null,
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
 )

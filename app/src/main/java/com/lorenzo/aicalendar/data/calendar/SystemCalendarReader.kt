@@ -4,6 +4,7 @@ import android.content.ContentUris
 import android.content.Context
 import android.provider.CalendarContract
 import android.util.Log
+import com.lorenzo.aicalendar.data.local.EventDao
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
 import com.lorenzo.aicalendar.domain.model.EventSource
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -22,6 +23,7 @@ import javax.inject.Singleton
 @Singleton
 class SystemCalendarReader @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val eventDao: EventDao,
 ) {
     /**
      * System-calendar events overlapping [from, to]. Returns empty if READ_CALENDAR is not granted
@@ -29,6 +31,9 @@ class SystemCalendarReader @Inject constructor(
      */
     suspend fun eventsBetween(from: Instant, to: Instant, zone: ZoneId): List<CalendarEvent> =
         withContext(Dispatchers.IO) {
+            // Events we mirrored to the device calendar are already shown as app events —
+            // skip them here so they don't appear twice.
+            val mirrored = eventDao.getMirroredSystemIds().toSet()
             val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().apply {
                 ContentUris.appendId(this, from.toEpochMilli())
                 ContentUris.appendId(this, to.toEpochMilli())
@@ -62,6 +67,7 @@ class SystemCalendarReader @Inject constructor(
 
                     buildList {
                         while (c.moveToNext()) {
+                            if (c.getLong(idCol) in mirrored) continue
                             val begin = c.getLong(beginCol)
                             val end = c.getLong(endCol)
                             val start = Instant.ofEpochMilli(begin)

@@ -2,6 +2,7 @@ package com.lorenzo.aicalendar.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lorenzo.aicalendar.data.calendar.SystemCalendarWriter
 import com.lorenzo.aicalendar.data.settings.SettingsRepository
 import com.lorenzo.aicalendar.domain.profile.ProfileRepository
 import com.lorenzo.aicalendar.domain.profile.UserProfile
@@ -19,6 +20,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val repository: ProfileRepository,
     private val settings: SettingsRepository,
+    private val calendarWriter: SystemCalendarWriter,
 ) : ViewModel() {
 
     private val _draft = MutableStateFlow(UserProfile())
@@ -33,8 +35,31 @@ class SettingsViewModel @Inject constructor(
     val voiceReplies: StateFlow<Boolean> =
         settings.voiceReplies.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    val syncToSystemCalendar: StateFlow<Boolean> =
+        settings.syncToSystemCalendar.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val systemCalendarId: StateFlow<Long?> =
+        settings.systemCalendarId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val _writableCalendars = MutableStateFlow<List<SystemCalendarWriter.WritableCalendar>>(emptyList())
+    val writableCalendars: StateFlow<List<SystemCalendarWriter.WritableCalendar>> =
+        _writableCalendars.asStateFlow()
+
     init {
         viewModelScope.launch { _draft.value = repository.profile.first() }
+        refreshWritableCalendars()
+    }
+
+    /** Loads the device calendars we can write to (empty without the permission). */
+    fun refreshWritableCalendars() {
+        viewModelScope.launch {
+            val calendars = calendarWriter.writableCalendars()
+            _writableCalendars.value = calendars
+            // First activation: default to the primary (first) calendar.
+            if (settings.systemCalendarId.first() == null) {
+                calendars.firstOrNull()?.let { settings.setSystemCalendarId(it.id) }
+            }
+        }
     }
 
     fun update(profile: UserProfile) {
@@ -51,6 +76,17 @@ class SettingsViewModel @Inject constructor(
 
     fun setVoiceReplies(enabled: Boolean) {
         viewModelScope.launch { settings.setVoiceReplies(enabled) }
+    }
+
+    fun setSyncToSystemCalendar(enabled: Boolean) {
+        viewModelScope.launch {
+            settings.setSyncToSystemCalendar(enabled)
+            if (enabled) refreshWritableCalendars()
+        }
+    }
+
+    fun setSystemCalendarId(id: Long) {
+        viewModelScope.launch { settings.setSystemCalendarId(id) }
     }
 
     fun save() {

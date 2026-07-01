@@ -32,6 +32,10 @@ interface EventDao {
     @Query("SELECT * FROM events WHERE id = :id")
     suspend fun getById(id: String): EventEntity?
 
+    /** System-calendar ids of events we mirrored (used to hide them from the system overlay). */
+    @Query("SELECT systemEventId FROM events WHERE systemEventId IS NOT NULL")
+    suspend fun getMirroredSystemIds(): List<Long>
+
     @Upsert
     suspend fun upsert(event: EventEntity)
 
