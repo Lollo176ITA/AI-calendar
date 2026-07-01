@@ -19,9 +19,12 @@ import com.lorenzo.aicalendar.domain.repository.EventRepository
 import com.lorenzo.aicalendar.domain.usecase.DeleteEventUseCase
 import com.lorenzo.aicalendar.domain.usecase.SaveEventUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -54,7 +57,15 @@ class AssistantViewModel @Inject constructor(
     private val _sending = MutableStateFlow(false)
     val sending: StateFlow<Boolean> = _sending.asStateFlow()
 
-    fun send(text: String) {
+    /** Replies to read aloud (emitted only for voice-initiated turns, if the setting allows). */
+    private val _speakReplies = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val speakReplies: SharedFlow<String> = _speakReplies.asSharedFlow()
+
+    /** Whether a final dictation result should be sent right away (Settings toggle). */
+    val voiceAutoSend: StateFlow<Boolean> =
+        settings.voiceAutoSend.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun send(text: String, viaVoice: Boolean = false) {
         val message = text.trim()
         if (message.isEmpty() || _sending.value) return
 
@@ -93,6 +104,9 @@ class AssistantViewModel @Inject constructor(
                         Instant.now(clock),
                     ),
                 )
+                if (viaVoice && settings.voiceReplies.first()) {
+                    _speakReplies.tryEmit(reply.text + conflictNote)
+                }
             } catch (e: Exception) {
                 chatRepository.add(
                     ChatMessage(

@@ -2,6 +2,11 @@
 
 package com.lorenzo.aicalendar.ui.calendar
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,8 +16,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,7 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Event
@@ -34,7 +41,6 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,27 +50,39 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lorenzo.aicalendar.domain.model.CalendarEvent
 import com.lorenzo.aicalendar.domain.model.EventSource
 import com.lorenzo.aicalendar.ui.AppDestinations
+import com.lorenzo.aicalendar.ui.assistant.AssistantChatPanel
+import com.lorenzo.aicalendar.ui.assistant.AssistantInputBar
+import com.lorenzo.aicalendar.ui.assistant.AssistantViewModel
+import com.lorenzo.aicalendar.ui.assistant.TtsSpeaker
+import com.lorenzo.aicalendar.ui.assistant.VoiceInputController
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
@@ -85,19 +103,91 @@ private val monthTitleFmt = DateTimeFormatter.ofPattern("LLLL yyyy", IT)
 private val dayTitleFmt = DateTimeFormatter.ofPattern("EEEE d MMMM", IT)
 private val dayShortFmt = DateTimeFormatter.ofPattern("d MMM", IT)
 
+/**
+ * Unified home: the agenda plus the assistant. A messaging-style input bar (with mic) is
+ * always docked at the bottom, and the conversation expands as a collapsible panel over
+ * the calendar — talking to the AI is zero taps away from app launch.
+ */
 @Composable
 fun CalendarScreen(
-    onAddEvent: () -> Unit,
     onNavigate: (String) -> Unit,
+    voiceTrigger: Int = 0,
     viewModel: CalendarViewModel = hiltViewModel(),
+    assistantViewModel: AssistantViewModel = hiltViewModel(),
 ) {
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val selectedDate by viewModel.selectedDate.collectAsStateWithLifecycle()
     val eventsByDay by viewModel.eventsByDay.collectAsStateWithLifecycle()
     val today = viewModel.today()
 
+    val messages by assistantViewModel.messages.collectAsStateWithLifecycle()
+    val sending by assistantViewModel.sending.collectAsStateWithLifecycle()
+    val voiceAutoSend by assistantViewModel.voiceAutoSend.collectAsStateWithLifecycle()
+
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var chatOpen by rememberSaveable { mutableStateOf(false) }
+    var input by rememberSaveable { mutableStateOf("") }
+    var listening by remember { mutableStateOf(false) }
+
+    val tts = remember { TtsSpeaker(context) }
+    DisposableEffect(Unit) { onDispose { tts.shutdown() } }
+    LaunchedEffect(Unit) { assistantViewModel.speakReplies.collect { tts.speak(it) } }
+
+    val sendMessage: (String, Boolean) -> Unit = { text, viaVoice ->
+        assistantViewModel.send(text, viaVoice)
+        input = ""
+        chatOpen = true
+    }
+
+    val voice = remember {
+        VoiceInputController(
+            context = context,
+            onListeningChange = { listening = it },
+            onPartial = { input = it },
+            onFinal = { text ->
+                if (voiceAutoSend) {
+                    sendMessage(text, true)
+                } else {
+                    input = text
+                    chatOpen = true
+                }
+            },
+            onErrorMessage = { message -> scope.launch { snackbarHostState.showSnackbar(message) } },
+        )
+    }
+    DisposableEffect(Unit) { onDispose { voice.destroy() } }
+
+    val micPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            voice.start()
+        } else {
+            scope.launch { snackbarHostState.showSnackbar("Per usare la voce serve il permesso del microfono.") }
+        }
+    }
+    val startVoice: () -> Unit = {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            voice.start()
+        } else {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    // App shortcut "Parla con l'assistente": open the conversation with the mic already on.
+    LaunchedEffect(voiceTrigger) {
+        if (voiceTrigger > 0) {
+            chatOpen = true
+            startVoice()
+        }
+    }
+
     val onEventClick: (CalendarEvent) -> Unit = { event ->
         // System-calendar events are read-only mirrors — don't open the editable detail screen.
         if (event.source != EventSource.SYSTEM) {
@@ -123,39 +213,59 @@ fun CalendarScreen(
                 onSettings = { onNavigate(AppDestinations.SETTINGS) },
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAddEvent) {
-                Icon(Icons.Filled.Add, contentDescription = "Aggiungi evento")
-            }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            AssistantInputBar(
+                value = input,
+                onValueChange = { input = it },
+                listening = listening,
+                sending = sending,
+                onMic = startVoice,
+                onStopVoice = { voice.stop() },
+                onSend = { sendMessage(input, false) },
+                modifier = Modifier.navigationBarsPadding().imePadding(),
+                onTapWhileCollapsed = { if (!chatOpen && messages.isNotEmpty()) chatOpen = true },
+            )
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            when (viewMode) {
-                CalendarViewMode.DAY -> DayView(
-                    date = selectedDate,
-                    events = eventsByDay[selectedDate].orEmpty(),
-                    isToday = selectedDate == today,
-                    onPrev = viewModel::previous,
-                    onNext = viewModel::next,
-                    onToday = viewModel::goToday,
-                    onEventClick = onEventClick,
-                )
-                CalendarViewMode.WEEK -> WeekView(
-                    selectedDate = selectedDate,
-                    today = today,
-                    eventsByDay = eventsByDay,
-                    onSelect = viewModel::selectDate,
-                    onPrev = viewModel::previous,
-                    onNext = viewModel::next,
-                    onToday = viewModel::goToday,
-                    onEventClick = onEventClick,
-                )
-                CalendarViewMode.MONTH -> MonthView(
-                    selectedDate = selectedDate,
-                    today = today,
-                    eventsByDay = eventsByDay,
-                    onSelect = viewModel::selectDate,
-                    onEventClick = onEventClick,
+            Column(Modifier.weight(1f)) {
+                when (viewMode) {
+                    CalendarViewMode.DAY -> DayView(
+                        date = selectedDate,
+                        events = eventsByDay[selectedDate].orEmpty(),
+                        isToday = selectedDate == today,
+                        onPrev = viewModel::previous,
+                        onNext = viewModel::next,
+                        onToday = viewModel::goToday,
+                        onEventClick = onEventClick,
+                    )
+                    CalendarViewMode.WEEK -> WeekView(
+                        selectedDate = selectedDate,
+                        today = today,
+                        eventsByDay = eventsByDay,
+                        onSelect = viewModel::selectDate,
+                        onPrev = viewModel::previous,
+                        onNext = viewModel::next,
+                        onToday = viewModel::goToday,
+                        onEventClick = onEventClick,
+                    )
+                    CalendarViewMode.MONTH -> MonthView(
+                        selectedDate = selectedDate,
+                        today = today,
+                        eventsByDay = eventsByDay,
+                        onSelect = viewModel::selectDate,
+                        onEventClick = onEventClick,
+                    )
+                }
+            }
+            AnimatedVisibility(visible = chatOpen) {
+                AssistantChatPanel(
+                    messages = messages,
+                    sending = sending,
+                    onCollapse = { chatOpen = false },
+                    onPickExample = { input = it },
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight(0.55f),
                 )
             }
         }

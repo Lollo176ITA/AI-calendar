@@ -27,6 +27,12 @@ class SettingsViewModel @Inject constructor(
     val showSystemCalendar: StateFlow<Boolean> =
         settings.showSystemCalendar.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    val voiceAutoSend: StateFlow<Boolean> =
+        settings.voiceAutoSend.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    val voiceReplies: StateFlow<Boolean> =
+        settings.voiceReplies.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
     init {
         viewModelScope.launch { _draft.value = repository.profile.first() }
     }
@@ -37,6 +43,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowSystemCalendar(enabled: Boolean) {
         viewModelScope.launch { settings.setShowSystemCalendar(enabled) }
+    }
+
+    fun setVoiceAutoSend(enabled: Boolean) {
+        viewModelScope.launch { settings.setVoiceAutoSend(enabled) }
+    }
+
+    fun setVoiceReplies(enabled: Boolean) {
+        viewModelScope.launch { settings.setVoiceReplies(enabled) }
     }
 
     fun save() {

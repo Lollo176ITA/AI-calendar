@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AI-calendar</string>
+    <!-- Static app shortcut (shortcuts must use string resources). -->
+    <string name="shortcut_voice_short">Parla</string>
+    <string name="shortcut_voice_long">Parla con l\'assistente</string>
 </resources>

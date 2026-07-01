@@ -22,7 +22,25 @@ class SettingsRepository @Inject constructor(
         dataStore.edit { it[SHOW_SYSTEM_CALENDAR] = enabled }
     }
 
+    /** Whether a final dictation result is sent to the assistant right away. */
+    val voiceAutoSend: Flow<Boolean> =
+        dataStore.data.map { it[VOICE_AUTO_SEND] ?: true }
+
+    suspend fun setVoiceAutoSend(enabled: Boolean) {
+        dataStore.edit { it[VOICE_AUTO_SEND] = enabled }
+    }
+
+    /** Whether the assistant reads its replies aloud for voice-initiated messages. */
+    val voiceReplies: Flow<Boolean> =
+        dataStore.data.map { it[VOICE_REPLIES] ?: true }
+
+    suspend fun setVoiceReplies(enabled: Boolean) {
+        dataStore.edit { it[VOICE_REPLIES] = enabled }
+    }
+
     private companion object {
         val SHOW_SYSTEM_CALENDAR = booleanPreferencesKey("show_system_calendar")
+        val VOICE_AUTO_SEND = booleanPreferencesKey("voice_auto_send")
+        val VOICE_REPLIES = booleanPreferencesKey("voice_replies")
     }
 }

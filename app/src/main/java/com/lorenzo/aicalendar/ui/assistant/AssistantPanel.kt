@@ -1,7 +1,10 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.lorenzo.aicalendar.ui.assistant
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,43 +20,42 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lorenzo.aicalendar.domain.chat.ChatMessage
 import com.lorenzo.aicalendar.domain.chat.ChatRole
 
+/**
+ * The assistant conversation, shown as a collapsible panel over the agenda on the
+ * unified home screen. Empty conversation → capability welcome with tappable examples.
+ */
 @Composable
-fun AssistantScreen(
-    onClose: () -> Unit,
-    viewModel: AssistantViewModel = hiltViewModel(),
+fun AssistantChatPanel(
+    messages: List<ChatMessage>,
+    sending: Boolean,
+    onCollapse: () -> Unit,
+    onPickExample: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val messages by viewModel.messages.collectAsStateWithLifecycle()
-    val sending by viewModel.sending.collectAsStateWithLifecycle()
-    var input by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size, sending) {
@@ -61,43 +63,99 @@ fun AssistantScreen(
         if (count > 0) listState.animateScrollToItem(count - 1)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Assistente") },
-                navigationIcon = {
-                    IconButton(onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro") }
-                },
-            )
-        },
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            if (messages.isEmpty() && !sending) {
-                AssistantWelcome(
-                    modifier = Modifier.weight(1f),
-                    onPick = { input = it },
+    Surface(modifier = modifier, tonalElevation = 3.dp) {
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    "Assistente",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                IconButton(onCollapse) {
+                    Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Chiudi conversazione")
+                }
+            }
+            if (messages.isEmpty() && !sending) {
+                AssistantWelcome(modifier = Modifier.weight(1f), onPick = onPickExample)
             } else {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(messages, key = { it.id }) { MessageBubble(it) }
                     if (sending) item { Bubble(fromUser = false, text = "…") }
                 }
             }
+        }
+    }
+}
 
-            InputRow(
-                value = input,
-                onValueChange = { input = it },
-                enabled = !sending,
-                onSend = {
-                    viewModel.send(input)
-                    input = ""
+/**
+ * Message-app style input bar docked at the bottom of the home screen: text field plus a
+ * mic that morphs into stop-while-listening and send-when-there-is-text.
+ */
+@Composable
+fun AssistantInputBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    listening: Boolean,
+    sending: Boolean,
+    onMic: () -> Unit,
+    onStopVoice: () -> Unit,
+    onSend: () -> Unit,
+    modifier: Modifier = Modifier,
+    onTapWhileCollapsed: () -> Unit = {},
+) {
+    Surface(modifier = modifier, tonalElevation = 3.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = {
+                    onTapWhileCollapsed()
+                    onValueChange(it)
                 },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text(if (listening) "Ti ascolto…" else "Scrivi o detta un messaggio…") },
+                maxLines = 4,
+                readOnly = listening,
             )
+            when {
+                listening -> {
+                    val pulse by rememberInfiniteTransition(label = "mic-pulse").animateFloat(
+                        initialValue = 1f,
+                        targetValue = 0.4f,
+                        animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
+                        label = "mic-pulse-alpha",
+                    )
+                    FilledIconButton(onClick = onStopVoice, modifier = Modifier.alpha(pulse)) {
+                        Icon(Icons.Filled.Stop, contentDescription = "Ferma la dettatura")
+                    }
+                }
+
+                value.isBlank() -> FilledIconButton(onClick = onMic, enabled = !sending) {
+                    Icon(Icons.Filled.Mic, contentDescription = "Detta un messaggio")
+                }
+
+                else -> FilledIconButton(onClick = onSend, enabled = !sending) {
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Invia")
+                }
+            }
         }
     }
 }
@@ -111,27 +169,18 @@ private fun AssistantWelcome(modifier: Modifier = Modifier, onPick: (String) -> 
         "Cosa ho in agenda questa settimana?",
     )
     Column(
-        modifier = modifier.fillMaxWidth().padding(24.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            Icons.Filled.AutoAwesome,
-            contentDescription = null,
-            modifier = Modifier.size(44.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Il tuo assistente", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(8.dp))
         Text(
-            "Crea, sposta o cancella eventi parlando in modo naturale. Gestisco anche le " +
-                "ricorrenze e ti avviso sulle sovrapposizioni.",
+            "Crea, sposta o cancella eventi parlando in modo naturale — con il microfono o " +
+                "scrivendo. Gestisco anche le ricorrenze e ti avviso sulle sovrapposizioni.",
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
         examples.forEach { example ->
             Card(
                 onClick = { onPick(example) },
@@ -170,34 +219,6 @@ private fun Bubble(fromUser: Boolean, text: String) {
                 color = if (fromUser) colors.onPrimary else colors.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyLarge,
             )
-        }
-    }
-}
-
-@Composable
-private fun InputRow(
-    value: String,
-    onValueChange: (String) -> Unit,
-    enabled: Boolean,
-    onSend: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("Scrivi un messaggio…") },
-            maxLines = 4,
-        )
-        FilledIconButton(
-            onClick = onSend,
-            enabled = enabled && value.isNotBlank(),
-        ) {
-            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Invia")
         }
     }
 }

@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.EventNote
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -46,6 +49,8 @@ fun SettingsScreen(
 ) {
     val draft by viewModel.draft.collectAsStateWithLifecycle()
     val showSystemCalendar by viewModel.showSystemCalendar.collectAsStateWithLifecycle()
+    val voiceAutoSend by viewModel.voiceAutoSend.collectAsStateWithLifecycle()
+    val voiceReplies by viewModel.voiceReplies.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -89,6 +94,22 @@ fun SettingsScreen(
                 },
             )
             Spacer(Modifier.height(12.dp))
+            SettingSwitchRow(
+                icon = Icons.Filled.Mic,
+                title = "Invio automatico dopo la dettatura",
+                subtitle = "Quello che detti viene mandato subito all'assistente",
+                checked = voiceAutoSend,
+                onToggle = viewModel::setVoiceAutoSend,
+            )
+            Spacer(Modifier.height(12.dp))
+            SettingSwitchRow(
+                icon = Icons.AutoMirrored.Filled.VolumeUp,
+                title = "Risposte vocali",
+                subtitle = "L'assistente legge ad alta voce le risposte ai messaggi dettati",
+                checked = voiceReplies,
+                onToggle = viewModel::setVoiceReplies,
+            )
+            Spacer(Modifier.height(12.dp))
             Button(
                 onClick = { viewModel.save(); onClose() },
                 modifier = Modifier.fillMaxWidth(),
@@ -99,16 +120,33 @@ fun SettingsScreen(
 
 @Composable
 private fun SystemCalendarRow(checked: Boolean, onToggle: (Boolean) -> Unit) {
+    SettingSwitchRow(
+        icon = Icons.AutoMirrored.Filled.EventNote,
+        title = "Calendario del telefono",
+        subtitle = "Mostra anche gli eventi di Google/Samsung Calendar",
+        checked = checked,
+        onToggle = onToggle,
+    )
+}
+
+@Composable
+private fun SettingSwitchRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.AutoMirrored.Filled.EventNote, contentDescription = null, modifier = Modifier.size(28.dp))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
         Column(Modifier.weight(1f)) {
-            Text("Calendario del telefono", style = MaterialTheme.typography.bodyLarge)
+            Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(
-                "Mostra anche gli eventi di Google/Samsung Calendar",
+                subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
