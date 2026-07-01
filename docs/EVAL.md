@@ -1,7 +1,7 @@
 # Eval dell'assistente — testare le risposte AI e affinare il prompt
 
 L'harness sta in `app/src/test/java/com/lorenzo/aicalendar/eval/AssistantEvalTest.kt`:
-una suite di **17 richieste utente realistiche in italiano** con attese verificabili in codice
+una suite di **18 richieste utente realistiche in italiano** con attese verificabili in codice
 (azione, date risolte, RRULE, numero di operazioni), eseguita in parallelo contro uno o più
 modelli OpenRouter con una tabella comparativa finale.
 
@@ -51,7 +51,7 @@ qualche minuto.
 | Update/Delete con ref | sposta la riunione, cancella la palestra |
 | Nessuna operazione | domanda sull'agenda, fuori ambito (meteo), dati mancanti |
 | Campi | luogo, allDay, endDateTime |
-| Regressioni dal telefono | coerenza di luogo (treno per Torino + pranzo a Napoli), data già passata ("il 14 maggio" detto a luglio), niente emoji nel reply (check trasversale su tutti i casi) |
+| Regressioni dal telefono | coerenza di luogo (treno per Torino + pranzo a Napoli), data già passata ("il 14 maggio" detto a luglio), niente emoji nel reply (check trasversale), richiamo esaustivo dell'agenda ("che compleanni ho questo mese?" con titoli refusati) |
 
 ## Il ciclo di miglioramento del prompt
 

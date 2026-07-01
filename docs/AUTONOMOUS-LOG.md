@@ -14,6 +14,15 @@ conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarr
   libreria pubblica "scheduling di Google"; questo è l'approccio standard dietro le feature
   "trova un orario". Per la ri-ottimizzazione dell'intera giornata c'è Google OR-Tools (constraint
   solver open source, gira su Android/JVM) — in backlog, per ora sovradimensionato.
+- **Fix dal collaudo sul telefono, secondo giro (2 lug, notte)**: (1) *richiamo agenda scarso* —
+  "che compleanni ho questo mese?" rispondeva "nessuno" con due compleanni in agenda (uno col
+  refuso "CompleBbo"): nuova sezione prompt "DOMANDE SULL'AGENDA" (leggi ogni riga, includi
+  refusi/abbreviazioni), MAX_AGENDA 25→40 (con un calendario reale il tetto basso troncava il
+  contesto in silenzio), caso eval `compleanni-del-mese`; (2) *token `<pad>` trapelato nel reply*
+  ("Tenga presente che<pad> questo impegno"): `sanitizeModelText` deterministica su ogni reply
+  (pad/unk/s/ChatML), unit test; (3) *dava del lei a intermittenza*: regola "dai SEMPRE del tu".
+  Confermati funzionanti sul dispositivo: coerenza di luogo (ha chiesto invece di creare il pranzo
+  a Napoli, poi creato su conferma), slot liberi suggeriti dal SlotFinder, update via riferimento.
 - **Fix dal collaudo sul telefono (feedback utente, 2 lug)**: (1) *coerenza di luogo* — il pranzo a
   Napoli col treno per Torino in agenda veniva creato senza obiezioni (nessuna sovrapposizione di
   orario): nuova regola nel prompt "COERENZA DI LUOGO E SPOSTAMENTI" (impegni incompatibili

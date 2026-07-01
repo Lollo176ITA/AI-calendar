@@ -38,7 +38,7 @@ avvicina l'app a questa esperienza, non è prioritaria.
 | 5 | **Scrittura sul calendario di sistema** (eventi veri su Google Calendar, senza OAuth) | ✅ questa iterazione |
 | 6 | App shortcut "Parla con l'assistente" (aggancio Assistant/Gemini) | ✅ questa iterazione |
 | 7 | **Scheduling deterministico**: conflitti + slot liberi suggeriti dall'algoritmo, non dall'AI | ✅ questa iterazione |
-| 8 | **Eval suite**: 17 richieste-tipo con attese verificabili, confronto multi-modello, ciclo di affinamento del prompt ([docs/EVAL.md](EVAL.md)) | ✅ questa iterazione |
+| 8 | **Eval suite**: richieste-tipo con attese verificabili, confronto multi-modello, ciclo di affinamento del prompt ([docs/EVAL.md](EVAL.md)) | ✅ questa iterazione |
 | 9 | Integrazione profonda con Gemini (App Functions, `androidx.appfunctions`) | ⏳ quando l'API si stabilizza |
 | 10 | Login per-utente (PKCE) al posto della chiave dev | ⏳ pianificata |
 | 11 | Scheduling proattivo: l'app propone riorganizzazioni dell'intera giornata (es. con un constraint solver tipo Google OR-Tools) | 💡 idea |

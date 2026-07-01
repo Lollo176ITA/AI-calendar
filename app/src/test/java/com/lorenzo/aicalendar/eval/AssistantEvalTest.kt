@@ -98,6 +98,7 @@ class AssistantEvalTest {
         val id: String,
         val message: String,
         val agenda: List<CalendarEvent> = emptyList(),
+        val systemAgenda: List<CalendarEvent> = emptyList(),
         val check: (AssistantReply) -> List<String>,
     )
 
@@ -214,6 +215,29 @@ class AssistantEvalTest {
             ),
         ) { r -> r.requireNoOps() },
         EvalCase(
+            // Phone regression: asked "which birthdays this month", the assistant answered "none"
+            // while the phone calendar had two — one with a typo'd title. Agenda recall must be
+            // exhaustive, typos included.
+            "compleanni-del-mese",
+            "Che compleanni ho questo mese?",
+            systemAgenda = listOf(
+                event("train", "Treno per Torino PN", tomorrow.atTime(7, 40), tomorrow.atTime(12, 46)),
+                event("bday1", "Compleanno cri", afterTomorrow.atTime(8, 0), afterTomorrow.atTime(9, 0)),
+                event(
+                    "bday2",
+                    "CompleBbo fabiana",
+                    nowLocal.toLocalDate().plusDays(9).atTime(8, 0),
+                    nowLocal.toLocalDate().plusDays(9).atTime(9, 0),
+                ),
+            ),
+        ) { r ->
+            r.requireNoOps() + buildList {
+                val reply = r.text.lowercase()
+                if ("cri" !in reply) add("il reply non cita il compleanno di Cri")
+                if ("fabiana" !in reply) add("il reply non cita il compleanno di Fabiana (titolo con refuso)")
+            }
+        },
+        EvalCase(
             // Another phone regression: "il 14 maggio" said in July was scheduled in the past.
             "data-passata",
             "Ricordami il 14 maggio di andare a pranzo a Roma con Ciaccio",
@@ -272,6 +296,7 @@ class AssistantEvalTest {
             zone = zone,
             profile = UserProfile(),
             upcomingEvents = case.agenda,
+            systemEvents = case.systemAgenda,
         )
         return try {
             val reply = assistant.respond(emptyList(), case.message, context, models = listOf(model))

@@ -28,6 +28,16 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import javax.inject.Inject
 
+/**
+ * Strips special-token artifacts free models sometimes leak into their text (seen on device:
+ * "Tenga presente che<pad> questo impegno…"), then collapses the double spaces they leave behind.
+ */
+internal fun sanitizeModelText(text: String): String =
+    text.replace(MODEL_ARTIFACTS, "").replace(DOUBLE_SPACES, " ").trim()
+
+private val MODEL_ARTIFACTS = Regex("<pad>|<unk>|</?s>|<\\|[^>]{0,30}\\|>", RegexOption.IGNORE_CASE)
+private val DOUBLE_SPACES = Regex("[ \\t]{2,}")
+
 /** Cloud conversational assistant via OpenRouter (JSON {reply, event}). */
 class OpenRouterAssistant @Inject constructor(
     private val api: OpenRouterApi,
@@ -79,9 +89,9 @@ class OpenRouterAssistant @Inject constructor(
 
     private fun parseReply(raw: String, zone: ZoneId): AssistantReply {
         val obj = runCatching { json.parseToJsonElement(extractJson(raw)).jsonObject }.getOrNull()
-            ?: return AssistantReply(raw.trim().ifBlank { "Ok." })
+            ?: return AssistantReply(sanitizeModelText(raw).ifBlank { "Ok." })
 
-        val reply = obj.str("reply", "text", "message") ?: "Ok."
+        val reply = obj.str("reply", "text", "message")?.let(::sanitizeModelText) ?: "Ok."
 
         // Accept both the multi-event field ("events": [...]) and the single-event field
         // ("event": {...}); a routine description maps to several recurring events at once.

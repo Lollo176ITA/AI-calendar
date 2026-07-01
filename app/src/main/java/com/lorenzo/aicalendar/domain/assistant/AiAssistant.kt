@@ -17,8 +17,12 @@ data class AssistantContext(
     val systemEvents: List<CalendarEvent> = emptyList(),
 ) {
     companion object {
-        /** How many agenda events are shown to / referenceable by the model (keeps prompts small). */
-        const val MAX_AGENDA = 25
+        /**
+         * How many agenda events are shown to / referenceable by the model. Keeps prompts small,
+         * but not too small: with a real phone calendar (trains, birthdays…) a low cap silently
+         * truncates the context and the assistant "doesn't see" events the user asks about.
+         */
+        const val MAX_AGENDA = 40
     }
 }
 
