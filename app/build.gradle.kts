@@ -49,6 +49,12 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        // The assistant-eval harness (JVM unit test) exercises OpenRouterApi, which logs via
+        // android.util.Log: return defaults instead of throwing "not mocked".
+        unitTests.isReturnDefaultValues = true
+    }
     // Kotlin jvmTarget inherits from compileOptions.targetCompatibility (17) under AGP 9 built-in Kotlin.
 }
 

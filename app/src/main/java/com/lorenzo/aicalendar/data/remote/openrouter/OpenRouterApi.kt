@@ -81,10 +81,16 @@ class OpenRouterApi @Inject constructor(
         return parseEvent(text)
     }
 
-    /** Conversational call: sends [messages], returns the assistant's raw JSON content. */
-    suspend fun chat(messages: List<ChatMessage>): String = withRetry {
+    /**
+     * Conversational call: sends [messages], returns the assistant's raw JSON content.
+     * [models] overrides the fallback chain (used by the eval harness to compare models).
+     */
+    suspend fun chat(
+        messages: List<ChatMessage>,
+        models: List<String> = OPENROUTER_EVENT_MODELS,
+    ): String = withRetry {
         val key = keyProvider.currentKey() ?: error("OpenRouter key not available")
-        val request = ChatJsonRequest(models = OPENROUTER_EVENT_MODELS, messages = messages)
+        val request = ChatJsonRequest(models = models, messages = messages)
 
         val http = client.post("$BASE_URL/chat/completions") {
             header(HttpHeaders.Authorization, "Bearer $key")

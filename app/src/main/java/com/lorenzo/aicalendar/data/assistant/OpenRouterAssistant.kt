@@ -40,6 +40,14 @@ class OpenRouterAssistant @Inject constructor(
         history: List<ChatMessage>,
         userMessage: String,
         context: AssistantContext,
+    ): AssistantReply = respond(history, userMessage, context, models = null)
+
+    /** Same as [respond], pinning the [models] fallback chain (used by the eval harness). */
+    suspend fun respond(
+        history: List<ChatMessage>,
+        userMessage: String,
+        context: AssistantContext,
+        models: List<String>?,
     ): AssistantReply {
         val messages = buildList {
             add(ApiMessage(role = "system", content = AssistantPrompts.eventAssistant(context)))
@@ -48,7 +56,7 @@ class OpenRouterAssistant @Inject constructor(
             }
             add(ApiMessage(role = "user", content = userMessage))
         }
-        val raw = api.chat(messages)
+        val raw = if (models == null) api.chat(messages) else api.chat(messages, models)
         return parseReply(raw, context.zone)
     }
 

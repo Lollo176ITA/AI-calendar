@@ -16,6 +16,7 @@ import com.lorenzo.aicalendar.domain.model.CalendarEvent
 import com.lorenzo.aicalendar.domain.model.EventSource
 import com.lorenzo.aicalendar.domain.profile.ProfileRepository
 import com.lorenzo.aicalendar.domain.repository.EventRepository
+import com.lorenzo.aicalendar.domain.scheduling.SlotFinder
 import com.lorenzo.aicalendar.domain.usecase.DeleteEventUseCase
 import com.lorenzo.aicalendar.domain.usecase.SaveEventUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -187,29 +188,28 @@ class AssistantViewModel @Inject constructor(
     }
 
     /**
-     * Deterministic conflict check: flags timed [others] overlapping [event] (same instant range),
-     * so overlaps are caught reliably regardless of what the LLM noticed. Returns a note to append.
+     * Deterministic conflict check via [SlotFinder]: overlaps are caught in code, reliably,
+     * regardless of what the LLM noticed — and the same algorithm proposes the nearest free
+     * slots of the same duration as alternatives. Returns a note to append to the reply.
      */
     private fun conflictWarning(
         event: CalendarEvent,
         others: List<CalendarEvent>,
         zone: ZoneId,
     ): String? {
-        if (event.allDay) return null
-        val start = event.start
-        val end = event.effectiveEnd
-        val masterId = event.id.substringBefore("@")
-        val clashes = others.asSequence()
-            .filter { it.id.substringBefore("@") != masterId && !it.allDay }
-            .filter { it.start.isBefore(end) && it.effectiveEnd.isAfter(start) }
-            .distinctBy { it.id.substringBefore("@") }
-            .toList()
+        val clashes = SlotFinder.conflicts(event, others)
         if (clashes.isEmpty()) return null
 
         val list = clashes.joinToString("; ") { c ->
             "«${c.title}» ${timeFmt.format(c.start.atZone(zone))}–${timeFmt.format(c.effectiveEnd.atZone(zone))}"
         }
-        return "\n\n⚠️ Attenzione: si sovrappone con $list."
+        val alternatives = SlotFinder.suggestAlternatives(event, others, zone)
+            .joinToString(" oppure ") { slot ->
+                "${timeFmt.format(slot.start.atZone(zone))}–${timeFmt.format(slot.end.atZone(zone))}"
+            }
+        val suggestion = alternatives.takeIf { it.isNotBlank() }
+            ?.let { " Se preferisci, quel giorno sei libero: $it." } ?: ""
+        return "\n\nAttenzione: si sovrappone con $list.$suggestion"
     }
 
     private companion object {

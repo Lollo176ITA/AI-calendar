@@ -4,6 +4,34 @@ Registro delle decisioni prese in autonomia (utente assente) e delle migliorie, 
 Per ogni voce: **cosa**, **perché**. Fedeltà alla visione: agenda *intelligente* (AI + algoritmi che
 conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarrangiano e notificano).
 
+## Scheduling deterministico + eval suite dell'assistente (lug 2026)
+
+- **SlotFinder (dominio, puro)**: l'algoritmo — non l'AI — rileva i conflitti E propone gli slot
+  liberi più vicini della stessa durata (interval scheduling: intervalli occupati ordinati e fusi,
+  complemento = buchi liberi, slot piazzato nel buco più vicino all'orario richiesto, arrotondato
+  al quarto d'ora). Il warning in chat ora dice anche "Se preferisci, quel giorno sei libero:
+  16:00–17:00 oppure 18:15–19:15." Coperto da unit test (`SlotFinderTest`). Nota: non esiste una
+  libreria pubblica "scheduling di Google"; questo è l'approccio standard dietro le feature
+  "trova un orario". Per la ri-ottimizzazione dell'intera giornata c'è Google OR-Tools (constraint
+  solver open source, gira su Android/JVM) — in backlog, per ora sovradimensionato.
+- **Fix dal collaudo sul telefono (feedback utente, 2 lug)**: (1) *coerenza di luogo* — il pranzo a
+  Napoli col treno per Torino in agenda veniva creato senza obiezioni (nessuna sovrapposizione di
+  orario): nuova regola nel prompt "COERENZA DI LUOGO E SPOSTAMENTI" (impegni incompatibili
+  spazialmente nello stesso giorno -> non creare, chiedere); (2) *niente emoji* — il "⚠️" della nota
+  di conflitto deterministica sostituito con "Attenzione:" e regola "MAI emoji" nel prompt;
+  (3) *data già passata* — "ricordami il 14 maggio" detto a luglio veniva messo nel passato: regola
+  "DATA GIA PASSATA -> prossima occorrenza futura o chiedi". Tutti e tre coperti da nuovi casi eval
+  (conflitto-di-luogo, data-passata, check anti-emoji trasversale). L'import dal calendario di
+  sistema è confermato funzionante sul dispositivo ("dal telefono · account", card distinte).
+- **Eval suite dell'assistente** (`AssistantEvalTest` + `docs/EVAL.md`): 17 richieste utente
+  realistiche in italiano con attese verificabili (date relative, RRULE insidiose, routine
+  multi-evento, update/delete con ref, casi "zero operazioni"), eseguite in parallelo su più
+  modelli OpenRouter con tabella comparativa. Opt-in via chiave (env o local.properties): senza
+  chiave il test è SKIPPED e la CI non ne risente. `EVAL_MODELS` restringe i modelli,
+  `EVAL_MIN_PASS` trasforma la suite in guardia anti-regressione del prompt. Per abilitarla:
+  `OpenRouterApi.chat` accetta ora un override dei modelli e `OpenRouterAssistant` ha un overload
+  `respond(..., models)`; `unitTests.isReturnDefaultValues=true` per android.util.Log nei test JVM.
+
 ## Voice-first: voce + home unificata + scrittura su Google Calendar (lug 2026)
 
 - **Home unificata (agenda + assistente)**: la chat non è più una schermata separata dietro il FAB.
