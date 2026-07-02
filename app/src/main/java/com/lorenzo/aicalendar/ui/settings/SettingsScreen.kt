@@ -36,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -50,7 +51,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lorenzo.aicalendar.data.assistant.NanoStatus
 import com.lorenzo.aicalendar.ui.profile.ProfileForm
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -62,6 +65,7 @@ fun SettingsScreen(
     val voiceAutoSend by viewModel.voiceAutoSend.collectAsStateWithLifecycle()
     val voiceReplies by viewModel.voiceReplies.collectAsStateWithLifecycle()
     val localAiOnly by viewModel.localAiOnly.collectAsStateWithLifecycle()
+    val nanoStatus by viewModel.nanoStatus.collectAsStateWithLifecycle()
     val syncToSystemCalendar by viewModel.syncToSystemCalendar.collectAsStateWithLifecycle()
     val systemCalendarId by viewModel.systemCalendarId.collectAsStateWithLifecycle()
     val writableCalendars by viewModel.writableCalendars.collectAsStateWithLifecycle()
@@ -166,6 +170,8 @@ fun SettingsScreen(
                 checked = localAiOnly,
                 onToggle = viewModel::setLocalAiOnly,
             )
+            Spacer(Modifier.height(4.dp))
+            NanoStatusRow(nanoStatus)
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = { viewModel.save(); onClose() },
@@ -229,6 +235,62 @@ private fun CalendarPickerRow(
             }
         }
     }
+}
+
+/**
+ * Live state of Gemini Nano under the local-AI toggle, so "why is the local AI not answering?"
+ * has a visible answer: unsupported device, model download (with progress), ready, or failed.
+ */
+@Composable
+private fun NanoStatusRow(status: NanoStatus) {
+    val text = when (status) {
+        NanoStatus.Unknown -> "AI del telefono: verifica in corso…"
+        NanoStatus.Unsupported -> "AI del telefono: non supportata su questo dispositivo"
+        is NanoStatus.Downloading -> buildString {
+            append("AI del telefono: download del modello")
+            val done = status.downloadedBytes
+            if (done != null) {
+                append(" · ").append(formatBytes(done))
+                status.totalBytes?.let { append(" di ").append(formatBytes(it)) }
+            } else {
+                append(" in corso…")
+            }
+        }
+        NanoStatus.Ready -> "AI del telefono: Gemini Nano pronto"
+        is NanoStatus.Failed ->
+            "AI del telefono: download non riuscito" + (status.message?.let { " ($it)" } ?: "")
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Spacer(Modifier.size(28.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (status is NanoStatus.Failed) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+            val done = (status as? NanoStatus.Downloading)?.downloadedBytes
+            val total = (status as? NanoStatus.Downloading)?.totalBytes
+            if (done != null && total != null && total > 0) {
+                Spacer(Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { (done.toFloat() / total).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes >= 1_000_000_000 -> String.format(Locale.ITALIAN, "%.1f GB", bytes / 1e9)
+    else -> "${bytes / 1_000_000} MB"
 }
 
 @Composable

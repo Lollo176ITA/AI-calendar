@@ -1,6 +1,7 @@
 package com.lorenzo.aicalendar.data.assistant
 
 import android.util.Log
+import com.google.mlkit.genai.common.DownloadStatus
 import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation
 import com.lorenzo.aicalendar.domain.assistant.AiAssistant
@@ -11,9 +12,34 @@ import com.lorenzo.aicalendar.domain.chat.ChatRole
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/**
+ * Observable availability of the on-device model, so the UI can answer "why is the local AI
+ * not responding?" — supported devices spend their first session in [Downloading].
+ */
+sealed interface NanoStatus {
+    /** Not queried yet. */
+    data object Unknown : NanoStatus
+
+    /** AICore says the feature can't run on this device. */
+    data object Unsupported : NanoStatus
+
+    /** Model download pending or running; byte counts appear once AICore reports them. */
+    data class Downloading(
+        val downloadedBytes: Long? = null,
+        val totalBytes: Long? = null,
+    ) : NanoStatus
+
+    data object Ready : NanoStatus
+
+    data class Failed(val message: String?) : NanoStatus
+}
 
 /**
  * On-device assistant on Gemini Nano (Android AICore) via the ML Kit GenAI Prompt API.
@@ -30,19 +56,32 @@ class GeminiNanoAssistant @Inject constructor(
     private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var downloadStarted = false
 
+    private val _status = MutableStateFlow<NanoStatus>(NanoStatus.Unknown)
+
+    /** Live availability of the on-device model (shown in Settings). */
+    val status: StateFlow<NanoStatus> = _status.asStateFlow()
+
     /** True when the on-device model can answer right now (never throws on unsupported devices). */
-    suspend fun isReady(): Boolean = runCatching {
-        when (model.checkStatus()) {
-            FeatureStatus.AVAILABLE -> true
-            FeatureStatus.DOWNLOADABLE -> {
-                startDownloadOnce()
-                false
+    suspend fun isReady(): Boolean = refreshStatus() == NanoStatus.Ready
+
+    /** Re-queries AICore, updates [status], and kicks off the model download when possible. */
+    suspend fun refreshStatus(): NanoStatus {
+        val status = runCatching {
+            when (model.checkStatus()) {
+                FeatureStatus.AVAILABLE -> NanoStatus.Ready
+                FeatureStatus.DOWNLOADABLE, FeatureStatus.DOWNLOADING -> {
+                    startDownloadOnce()
+                    // Keep whatever progress the download collector already reported.
+                    _status.value as? NanoStatus.Downloading ?: NanoStatus.Downloading()
+                }
+                else -> NanoStatus.Unsupported
             }
-            else -> false
+        }.getOrElse {
+            Log.w(TAG, "Gemini Nano unavailable: ${it.message}")
+            NanoStatus.Unsupported
         }
-    }.getOrElse {
-        Log.w(TAG, "Gemini Nano unavailable: ${it.message}")
-        false
+        _status.value = status
+        return status
     }
 
     /** First-use download of the shared on-device model — fire and forget, never blocks a turn. */
@@ -50,8 +89,28 @@ class GeminiNanoAssistant @Inject constructor(
         if (downloadStarted) return
         downloadStarted = true
         downloadScope.launch {
-            runCatching { model.download().collect { } }
-                .onFailure { Log.w(TAG, "Gemini Nano download failed: ${it.message}") }
+            var total: Long? = null
+            runCatching {
+                model.download().collect { event ->
+                    when (event) {
+                        is DownloadStatus.DownloadStarted -> {
+                            total = event.bytesToDownload.takeIf { it > 0 }
+                            _status.value = NanoStatus.Downloading(0, total)
+                        }
+                        is DownloadStatus.DownloadProgress ->
+                            _status.value = NanoStatus.Downloading(event.totalBytesDownloaded, total)
+                        is DownloadStatus.DownloadCompleted -> _status.value = NanoStatus.Ready
+                        is DownloadStatus.DownloadFailed -> {
+                            Log.w(TAG, "Gemini Nano download failed", event.e)
+                            _status.value = NanoStatus.Failed(event.e.message)
+                        }
+                        else -> Unit
+                    }
+                }
+            }.onFailure {
+                Log.w(TAG, "Gemini Nano download failed: ${it.message}")
+                _status.value = NanoStatus.Failed(it.message)
+            }
         }
     }
 

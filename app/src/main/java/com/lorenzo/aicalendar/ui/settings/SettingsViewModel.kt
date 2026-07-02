@@ -2,6 +2,8 @@ package com.lorenzo.aicalendar.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lorenzo.aicalendar.data.assistant.GeminiNanoAssistant
+import com.lorenzo.aicalendar.data.assistant.NanoStatus
 import com.lorenzo.aicalendar.data.calendar.SystemCalendarWriter
 import com.lorenzo.aicalendar.data.settings.SettingsRepository
 import com.lorenzo.aicalendar.domain.profile.ProfileRepository
@@ -21,6 +23,7 @@ class SettingsViewModel @Inject constructor(
     private val repository: ProfileRepository,
     private val settings: SettingsRepository,
     private val calendarWriter: SystemCalendarWriter,
+    private val nano: GeminiNanoAssistant,
 ) : ViewModel() {
 
     private val _draft = MutableStateFlow(UserProfile())
@@ -48,8 +51,12 @@ class SettingsViewModel @Inject constructor(
     val writableCalendars: StateFlow<List<SystemCalendarWriter.WritableCalendar>> =
         _writableCalendars.asStateFlow()
 
+    /** Live Gemini Nano availability (unsupported / downloading with progress / ready). */
+    val nanoStatus: StateFlow<NanoStatus> = nano.status
+
     init {
         viewModelScope.launch { _draft.value = repository.profile.first() }
+        viewModelScope.launch { nano.refreshStatus() }
         refreshWritableCalendars()
     }
 
@@ -82,7 +89,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setLocalAiOnly(enabled: Boolean) {
-        viewModelScope.launch { settings.setLocalAiOnly(enabled) }
+        viewModelScope.launch {
+            settings.setLocalAiOnly(enabled)
+            if (enabled) nano.refreshStatus()
+        }
     }
 
     fun setSyncToSystemCalendar(enabled: Boolean) {
