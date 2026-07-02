@@ -44,7 +44,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleVoiceIntent(intent: Intent?) {
-        if (intent?.action == ACTION_VOICE_INPUT) voiceTrigger++
+        // App shortcut, or the system assist gesture when the user picks us as assist app.
+        if (intent?.action == ACTION_VOICE_INPUT || intent?.action == Intent.ACTION_ASSIST) voiceTrigger++
     }
 
     /** Android 13+ needs runtime consent before any notification can be shown. */

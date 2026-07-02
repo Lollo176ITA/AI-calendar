@@ -1,5 +1,6 @@
 package com.lorenzo.aicalendar.eval
 
+import com.lorenzo.aicalendar.data.assistant.AssistantReplyParser
 import com.lorenzo.aicalendar.data.assistant.OpenRouterAssistant
 import com.lorenzo.aicalendar.data.auth.ApiKeyProvider
 import com.lorenzo.aicalendar.data.remote.openrouter.OPENROUTER_EVENT_MODELS
@@ -362,7 +363,7 @@ class AssistantEvalTest {
         val keyProvider = object : ApiKeyProvider {
             override suspend fun currentKey(): String = key
         }
-        return OpenRouterAssistant(OpenRouterApi(client, keyProvider, json), json)
+        return OpenRouterAssistant(OpenRouterApi(client, keyProvider, json), AssistantReplyParser(json))
     }
 
     /** OPENROUTER_API_KEY env var, or `openrouter.devKey` from local.properties (walking up). */

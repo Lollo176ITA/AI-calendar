@@ -39,6 +39,14 @@ class SettingsRepository @Inject constructor(
         dataStore.edit { it[VOICE_REPLIES] = enabled }
     }
 
+    /** Local-only AI mode: never call the cloud; use the phone's AI (Gemini Nano) when available. */
+    val localAiOnly: Flow<Boolean> =
+        dataStore.data.map { it[LOCAL_AI_ONLY] ?: false }
+
+    suspend fun setLocalAiOnly(enabled: Boolean) {
+        dataStore.edit { it[LOCAL_AI_ONLY] = enabled }
+    }
+
     /** Whether app events are mirrored to a device calendar (requires WRITE_CALENDAR). */
     val syncToSystemCalendar: Flow<Boolean> =
         dataStore.data.map { it[SYNC_TO_SYSTEM_CALENDAR] ?: false }
@@ -61,6 +69,7 @@ class SettingsRepository @Inject constructor(
         val SHOW_SYSTEM_CALENDAR = booleanPreferencesKey("show_system_calendar")
         val VOICE_AUTO_SEND = booleanPreferencesKey("voice_auto_send")
         val VOICE_REPLIES = booleanPreferencesKey("voice_replies")
+        val LOCAL_AI_ONLY = booleanPreferencesKey("local_ai_only")
         val SYNC_TO_SYSTEM_CALENDAR = booleanPreferencesKey("sync_to_system_calendar")
         val SYSTEM_CALENDAR_ID = longPreferencesKey("system_calendar_id")
     }

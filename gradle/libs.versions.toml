@@ -17,6 +17,7 @@ work = "2.11.2"
 securityCrypto = "1.1.0"
 browser = "1.10.0"
 mlkitEntityExtraction = "16.0.0-beta6"
+mlkitGenaiPrompt = "1.0.0-beta2"
 errorProneAnnotations = "2.50.0"
 turbine = "1.2.1"
 junit = "4.13.2"
@@ -80,6 +81,7 @@ androidx-security-crypto = { group = "androidx.security", name = "security-crypt
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version = "1.2.1" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 mlkit-entity-extraction = { group = "com.google.mlkit", name = "entity-extraction", version.ref = "mlkitEntityExtraction" }
+mlkit-genai-prompt = { group = "com.google.mlkit", name = "genai-prompt", version.ref = "mlkitGenaiPrompt" }
 
 # Test
 junit = { group = "junit", name = "junit", version.ref = "junit" }

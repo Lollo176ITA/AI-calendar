@@ -98,6 +98,8 @@ dependencies {
 
     // On-device AI: ML Kit Entity Extraction (date/time, offline, Italian)
     implementation(libs.mlkit.entity.extraction)
+    // On-device LLM (Gemini Nano via AICore) for the local-only assistant path
+    implementation(libs.mlkit.genai.prompt)
 
     // Cloud AI: OpenRouter via Ktor + kotlinx.serialization
     implementation(libs.ktor.client.okhttp)

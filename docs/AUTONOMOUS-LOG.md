@@ -14,6 +14,20 @@ conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarr
   libreria pubblica "scheduling di Google"; questo è l'approccio standard dietro le feature
   "trova un orario". Per la ri-ottimizzazione dell'intera giornata c'è Google OR-Tools (constraint
   solver open source, gira su Android/JVM) — in backlog, per ora sovradimensionato.
+- **AI del telefono: Gemini Nano on-device + modalità solo-locale (2 lug)**: la "Galaxy AI" di
+  Samsung non ha SDK per app terze (e nemmeno Bixby, il cui Capsule SDK per mobile è morto), ma il
+  modello on-device sottostante sì: **ML Kit GenAI Prompt API** (`com.google.mlkit:genai-prompt`,
+  beta2) espone Gemini Nano via AICore alle app terze su S24/S25/S26 e Pixel. Implementato
+  `GeminiNanoAssistant` (stesso prompt e stesso parsing del cloud) nella catena di `HybridAssistant`:
+  cloud → Nano → estrazione degradata; il download del modello parte in background al primo uso.
+  Parsing estratto in `AssistantReplyParser` condiviso (cloud + Nano, un solo posto per le reti di
+  sicurezza tipo `fixMonthlyByDay`). Nuovo toggle "**Elabora solo con AI locali**": il cloud non
+  viene MAI chiamato, le richieste restano sul telefono (messaggio onesto se Nano non è
+  disponibile). Bonus: l'app è ora selezionabile come **app assistente di sistema**
+  (intent-filter `ACTION_ASSIST` → home col mic già attivo), utile anche col tasto laterale
+  rimappato sui Samsung. Non verificato su device (Nano richiede hardware supportato): da
+  collaudare sull'S26 dell'utente.
+
 - **Fix dal collaudo, terzo giro (2 lug)**: (1) *l'onboarding ora mette la routine IN AGENDA* —
   la chat iniziale salvava la routine solo come testo nel profilo, senza creare eventi ("l'AI fa le
   domande poi non inserisce"): al termine dell'intervista il riassunto passa per l'event assistant

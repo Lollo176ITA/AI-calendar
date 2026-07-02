@@ -35,6 +35,9 @@ class SettingsViewModel @Inject constructor(
     val voiceReplies: StateFlow<Boolean> =
         settings.voiceReplies.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    val localAiOnly: StateFlow<Boolean> =
+        settings.localAiOnly.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     val syncToSystemCalendar: StateFlow<Boolean> =
         settings.syncToSystemCalendar.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
@@ -76,6 +79,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setVoiceReplies(enabled: Boolean) {
         viewModelScope.launch { settings.setVoiceReplies(enabled) }
+    }
+
+    fun setLocalAiOnly(enabled: Boolean) {
+        viewModelScope.launch { settings.setLocalAiOnly(enabled) }
     }
 
     fun setSyncToSystemCalendar(enabled: Boolean) {

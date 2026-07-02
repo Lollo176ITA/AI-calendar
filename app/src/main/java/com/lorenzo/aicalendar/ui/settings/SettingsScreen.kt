@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +61,7 @@ fun SettingsScreen(
     val showSystemCalendar by viewModel.showSystemCalendar.collectAsStateWithLifecycle()
     val voiceAutoSend by viewModel.voiceAutoSend.collectAsStateWithLifecycle()
     val voiceReplies by viewModel.voiceReplies.collectAsStateWithLifecycle()
+    val localAiOnly by viewModel.localAiOnly.collectAsStateWithLifecycle()
     val syncToSystemCalendar by viewModel.syncToSystemCalendar.collectAsStateWithLifecycle()
     val systemCalendarId by viewModel.systemCalendarId.collectAsStateWithLifecycle()
     val writableCalendars by viewModel.writableCalendars.collectAsStateWithLifecycle()
@@ -155,6 +157,14 @@ fun SettingsScreen(
                 subtitle = "L'assistente legge ad alta voce le risposte ai messaggi dettati",
                 checked = voiceReplies,
                 onToggle = viewModel::setVoiceReplies,
+            )
+            Spacer(Modifier.height(12.dp))
+            SettingSwitchRow(
+                icon = Icons.Filled.Shield,
+                title = "Elabora solo con AI locali",
+                subtitle = "Le richieste non escono dal telefono: usa l'AI integrata (Gemini Nano) quando disponibile",
+                checked = localAiOnly,
+                onToggle = viewModel::setLocalAiOnly,
             )
             Spacer(Modifier.height(12.dp))
             Button(

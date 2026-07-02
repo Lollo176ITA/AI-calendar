@@ -50,6 +50,12 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Selectable as the device's assist app (long-press/side-key gesture):
+                 launches home with the mic already listening. -->
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <!-- Static shortcut "Parla con l'assistente" (long-press launcher icon / Assistant). -->
             <meta-data
                 android:name="android.app.shortcuts"
