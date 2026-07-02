@@ -28,7 +28,7 @@ class HybridAssistant @Inject constructor(
     private val onDevice: OnDeviceEventExtractor,
     private val keyProvider: ApiKeyProvider,
     private val settings: SettingsRepository,
-    @ApplicationContext private val appContext: Context,
+    @param:ApplicationContext private val appContext: Context,
 ) : AiAssistant {
 
     override suspend fun respond(

@@ -22,7 +22,7 @@ import javax.inject.Inject
  * degrades to "no reminder" instead of crashing.
  */
 class AlarmReminderScheduler @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) : ReminderScheduler {
 
     private val alarmManager = context.getSystemService(AlarmManager::class.java)

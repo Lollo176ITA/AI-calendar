@@ -21,7 +21,7 @@ class HybridEventExtractor @Inject constructor(
     private val onDevice: OnDeviceEventExtractor,
     private val cloud: CloudEventExtractor,
     private val keyProvider: ApiKeyProvider,
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) : EventExtractor {
 
     override suspend fun extract(input: ExtractionInput): ExtractionResult {

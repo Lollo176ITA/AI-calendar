@@ -87,7 +87,7 @@ fun EventCard(event: CalendarEvent, modifier: Modifier = Modifier, onClick: (() 
                     DetailRow(icon = { RepeatIcon() }, text = label)
                 }
                 if (!event.location.isNullOrBlank()) {
-                    DetailRow(icon = { PlaceIcon() }, text = event.location!!)
+                    DetailRow(icon = { PlaceIcon() }, text = event.location)
                 }
                 if (fromSystem) {
                     DetailRow(

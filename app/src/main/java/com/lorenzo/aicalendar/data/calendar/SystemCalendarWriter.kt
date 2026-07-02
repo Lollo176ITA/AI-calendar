@@ -20,7 +20,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class SystemCalendarWriter @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) {
     /** A device calendar the user is allowed to create events in. */
     data class WritableCalendar(val id: Long, val name: String, val account: String)
