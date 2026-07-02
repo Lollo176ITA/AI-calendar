@@ -1,7 +1,7 @@
 package com.lorenzo.aicalendar.data.assistant
 
 import com.lorenzo.aicalendar.domain.assistant.AssistantContext
-import com.lorenzo.aicalendar.domain.profile.Profession
+import com.lorenzo.aicalendar.domain.profile.Occupation
 import com.lorenzo.aicalendar.domain.profile.UserProfile
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -35,8 +35,7 @@ object AssistantPrompts {
                     (e.location?.takeIf { it.isNotBlank() }?.let { " (@$it)" } ?: "")
             }
         val routine = ctx.profile.routine.takeIf { it.isNotBlank() } ?: "(non indicata)"
-        val profession = ctx.profile.profession.takeIf { it != Profession.UNSPECIFIED }
-            ?.name?.lowercase() ?: "non indicata"
+        val occupation = occupationsText(ctx.profile) ?: "non indicata"
 
         return """
 Sei l'assistente di un'app calendario${name?.let { " di $it" } ?: ""}. Parli sempre e solo in italiano.
@@ -60,7 +59,7 @@ Usa "ref" SOLO con un numero #N realmente presente in agenda. Se l'utente fa rif
 
 CONTESTO
 - Adesso: $now (fuso ${ctx.zone.id})
-- Professione utente: $profession
+- Occupazione utente: $occupation
 - Impegni gia in agenda (riferiti con #N): $agenda
 - Routine settimanale dell'utente: $routine${systemAgenda.takeIf { it.isNotBlank() }?.let { "\n- Impegni dal calendario del telefono (SOLA LETTURA, considerali per i conflitti ma NON modificarli/cancellarli):\n$it" } ?: ""}
 
@@ -104,14 +103,23 @@ Prima di rispondere verifica in silenzio: il JSON e valido? Se l'utente ha descr
         """.trimIndent()
     }
 
+    /** "studente e lavoratore", "studente", … — or null when nothing was picked. */
+    private fun occupationsText(profile: UserProfile): String? =
+        profile.occupations.takeIf { it.isNotEmpty() }?.joinToString(" e ") {
+            when (it) {
+                Occupation.STUDENT -> "studente"
+                Occupation.WORKER -> "lavoratore"
+                Occupation.OTHER -> "altro"
+            }
+        }
+
     /** System prompt for the post-profile routine-onboarding chat. */
     fun routineOnboarder(profile: UserProfile): String {
         val name = profile.firstName.takeIf { it.isNotBlank() }
-        val profession = profile.profession.takeIf { it != Profession.UNSPECIFIED }
-            ?.name?.lowercase()
+        val occupation = occupationsText(profile)
 
         return """
-Aiuti${name?.let { " $it" } ?: " l'utente"} a raccontare la sua routine settimanale tipica (lavoro/studio, pasti, sport, sonno, impegni fissi)${profession?.let { ", e l'utente e $it" } ?: ""}. Parli sempre e solo in italiano, con tono caldo, incoraggiante e conciso.
+Aiuti${name?.let { " $it" } ?: " l'utente"} a raccontare la sua routine settimanale tipica (lavoro/studio, pasti, sport, sonno, impegni fissi)${occupation?.let { ", e l'utente e $it" } ?: ""}. Parli sempre e solo in italiano, con tono caldo, incoraggiante e conciso. Dai SEMPRE del tu.
 
 REGOLA DI OUTPUT (la piu importante)
 Rispondi ESCLUSIVAMENTE con UN SOLO oggetto JSON valido, senza testo prima o dopo, senza blocchi di codice. Virgolette doppie. Schema esatto:

@@ -7,11 +7,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -31,7 +34,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.lorenzo.aicalendar.domain.profile.Profession
+import com.lorenzo.aicalendar.domain.profile.Occupation
 import com.lorenzo.aicalendar.domain.profile.Sex
 import com.lorenzo.aicalendar.domain.profile.UserProfile
 import java.time.Instant
@@ -84,15 +87,16 @@ fun ProfileForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Choice(
-            label = "Professione",
-            options = listOf(
-                Profession.STUDENT to "Studente",
-                Profession.WORKER to "Lavoratore",
-                Profession.OTHER to "Altro",
-            ),
-            selected = profile.profession,
-            onSelect = { onChange(profile.copy(profession = it)) },
+        OccupationChips(
+            selected = profile.occupations,
+            onToggle = { occupation ->
+                val updated = if (occupation in profile.occupations) {
+                    profile.occupations - occupation
+                } else {
+                    profile.occupations + occupation
+                }
+                onChange(profile.copy(occupations = updated))
+            },
         )
 
         if (showRoutine) {
@@ -109,6 +113,37 @@ fun ProfileForm(
                     minLines = 3,
                     placeholder = {
                         Text("Es: lun-ven lavoro 9-18, palestra mar/gio alle 19, domenica libero")
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Multi-select: weeks are often mixed (work AND study), so no forced single choice. */
+@Composable
+private fun OccupationChips(selected: Set<Occupation>, onToggle: (Occupation) -> Unit) {
+    val options = listOf(
+        Occupation.STUDENT to "Studio",
+        Occupation.WORKER to "Lavoro",
+        Occupation.OTHER to "Altro",
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "Le tue giornate (puoi sceglierne più di una)",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { (occupation, label) ->
+                FilterChip(
+                    selected = occupation in selected,
+                    onClick = { onToggle(occupation) },
+                    label = { Text(label) },
+                    leadingIcon = {
+                        if (occupation in selected) {
+                            Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
                     },
                 )
             }

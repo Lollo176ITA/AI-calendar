@@ -14,7 +14,16 @@ conoscono la routine, gestiscono ricorrenze complesse, rilevano conflitti, riarr
   libreria pubblica "scheduling di Google"; questo è l'approccio standard dietro le feature
   "trova un orario". Per la ri-ottimizzazione dell'intera giornata c'è Google OR-Tools (constraint
   solver open source, gira su Android/JVM) — in backlog, per ora sovradimensionato.
-- **Fix dal collaudo sul telefono, secondo giro (2 lug, notte)**: (1) *richiamo agenda scarso* —
+- **Fix dal collaudo, terzo giro (2 lug)**: (1) *l'onboarding ora mette la routine IN AGENDA* —
+  la chat iniziale salvava la routine solo come testo nel profilo, senza creare eventi ("l'AI fa le
+  domande poi non inserisce"): al termine dell'intervista il riassunto passa per l'event assistant
+  e ogni blocco diventa un evento ricorrente vero (best-effort: un errore non blocca l'onboarding);
+  (2) *occupazione multipla* — l'enum Professione a scelta singola non permetteva "lavoro e studio":
+  ora `occupations: Set<Occupation>` con FilterChip multi-selezione (migrazione dal vecchio valore
+  DataStore), prompt aggiornati ("studente e lavoratore"); (3) *grafica* — EventCard ridisegnata
+  (barra accento colorata per origine, orari in colonna, etichetta ricorrenza, gestione "tutto il
+  giorno" che prima mostrava orari senza senso, icona origine telefono) e barra di input a pillola
+  stile messaggistica (TextField arrotondato senza underline). (1) *richiamo agenda scarso* —
   "che compleanni ho questo mese?" rispondeva "nessuno" con due compleanni in agenda (uno col
   refuso "CompleBbo"): nuova sezione prompt "DOMANDE SULL'AGENDA" (leggi ogni riga, includi
   refusi/abbreviazioni), MAX_AGENDA 25→40 (con un calendario reale il tetto basso troncava il

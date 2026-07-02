@@ -6,7 +6,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.lorenzo.aicalendar.domain.profile.Profession
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.lorenzo.aicalendar.domain.profile.Occupation
 import com.lorenzo.aicalendar.domain.profile.ProfileRepository
 import com.lorenzo.aicalendar.domain.profile.Sex
 import com.lorenzo.aicalendar.domain.profile.UserProfile
@@ -28,8 +29,9 @@ class DataStoreProfileRepository @Inject constructor(
             sex = p[SEX]?.let { runCatching { Sex.valueOf(it) }.getOrNull() } ?: Sex.UNSPECIFIED,
             birthDate = p[BIRTH_EPOCH_DAY]?.let(LocalDate::ofEpochDay),
             city = p[CITY].orEmpty(),
-            profession = p[PROFESSION]?.let { runCatching { Profession.valueOf(it) }.getOrNull() }
-                ?: Profession.UNSPECIFIED,
+            occupations = p[OCCUPATIONS]
+                ?.mapNotNull { runCatching { Occupation.valueOf(it) }.getOrNull() }?.toSet()
+                ?: legacyOccupations(p[LEGACY_PROFESSION]),
             routine = p[ROUTINE].orEmpty(),
         )
     }
@@ -44,7 +46,7 @@ class DataStoreProfileRepository @Inject constructor(
             p[SEX] = profile.sex.name
             profile.birthDate?.let { p[BIRTH_EPOCH_DAY] = it.toEpochDay() } ?: p.remove(BIRTH_EPOCH_DAY)
             p[CITY] = profile.city
-            p[PROFESSION] = profile.profession.name
+            p[OCCUPATIONS] = profile.occupations.map { it.name }.toSet()
             p[ROUTINE] = profile.routine
         }
     }
@@ -53,13 +55,18 @@ class DataStoreProfileRepository @Inject constructor(
         dataStore.edit { it[ONBOARDING_DONE] = done }
     }
 
+    /** Reads the pre-multi-select single "profession" value from existing installs. */
+    private fun legacyOccupations(name: String?): Set<Occupation> =
+        name?.let { runCatching { Occupation.valueOf(it) }.getOrNull() }?.let(::setOf) ?: emptySet()
+
     private companion object {
         val FIRST_NAME = stringPreferencesKey("first_name")
         val LAST_NAME = stringPreferencesKey("last_name")
         val SEX = stringPreferencesKey("sex")
         val BIRTH_EPOCH_DAY = longPreferencesKey("birth_epoch_day")
         val CITY = stringPreferencesKey("city")
-        val PROFESSION = stringPreferencesKey("profession")
+        val OCCUPATIONS = stringSetPreferencesKey("occupations")
+        val LEGACY_PROFESSION = stringPreferencesKey("profession")
         val ROUTINE = stringPreferencesKey("routine")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     }
